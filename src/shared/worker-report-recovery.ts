@@ -16,7 +16,6 @@ const TERMINAL_CODES = new Set([
   'run_destination_unsupported',
   'run_destination_unresolved',
   'invalid_argument',
-  'unauthorized',
   'forbidden',
   'request_mismatch',
   'orchestration_migration_required',
@@ -95,6 +94,9 @@ export async function drainWorkerReports(
           ? error.code
           : 'transport_unknown'
       response = { id: record.input.requestId, ok: false, error: { code, message: '' } }
+    }
+    if (!shouldContinue()) {
+      break
     }
     const disposition = workerReportDisposition(response)
     if (disposition.accepted || disposition.rejected) {

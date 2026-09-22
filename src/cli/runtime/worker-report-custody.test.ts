@@ -33,6 +33,22 @@ afterEach(() => {
 })
 
 describe('CLI worker report custody', () => {
+  it('retains a report when startup metadata contains a stale authentication token', async () => {
+    const { root, store } = fixture()
+    await expect(
+      callWithWorkerReportCustody({
+        userDataPath: root,
+        pairing: null,
+        params,
+        options,
+        send: async () => {
+          throw new RuntimeClientError('unauthorized', 'stale token')
+        }
+      })
+    ).rejects.toMatchObject({ code: 'worker_report_pending' })
+    expect(await store.pending()).toHaveLength(1)
+  })
+
   it('persists exact authority and remote credentials before the first transport call', async () => {
     const { root, store } = fixture()
     const pairing = {

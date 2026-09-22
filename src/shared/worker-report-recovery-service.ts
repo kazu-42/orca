@@ -73,6 +73,23 @@ export class WorkerReportRecoveryService {
       clearTimeout(this.timer)
     }
     this.timer = null
-    await this.active
+    const active = this.active
+    if (!active) {
+      return
+    }
+    let deadline: ReturnType<typeof setTimeout> | undefined
+    try {
+      await Promise.race([
+        active,
+        new Promise<void>((resolve) => {
+          deadline = setTimeout(resolve, 2_000)
+          deadline.unref?.()
+        })
+      ])
+    } finally {
+      if (deadline) {
+        clearTimeout(deadline)
+      }
+    }
   }
 }

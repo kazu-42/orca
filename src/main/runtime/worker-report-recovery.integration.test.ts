@@ -204,7 +204,9 @@ describe('worker report CLI and isolated runtime recovery', () => {
     vi.mocked(f.runtime.getTerminalProcessIncarnation).mockReturnValue(
       original?.process_incarnation ?? null
     )
+    await f.server['workerReportRecovery']?.stop()
     await makeReportsDue(f)
+    f.server['workerReportRecovery']?.start()
     await f.server['workerReportRecovery']?.drain()
     expect((await f.store.pending()).length).toBe(0)
     expect(f.db.getTask(f.task.id)?.status).toBe('completed')

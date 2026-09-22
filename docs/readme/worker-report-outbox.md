@@ -49,6 +49,12 @@ Remote hosts reporting an unavailable/reloading graph are deferred. An older hos
 that omits this signal can still return a permanent capability refusal for a
 temporarily absent identity; that refusal is retained explicitly, not overridden.
 
+An `unauthorized` transport response retains the report for retry, because a
+startup token mismatch can be temporary. Explicit capability refusals remain
+permanent. Shutdown waits at most two seconds for an active drain; a late reply
+cannot settle its report after recovery stops. The persisted claim becomes
+eligible again after its retry delay, using the same mutation ID for deduplication.
+
 ## Bounds and storage safety
 
 - At most 256 directory entries, with each report limited to 256 KiB. Full or

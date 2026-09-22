@@ -42,6 +42,25 @@ afterEach(() => {
 })
 
 describe('durable worker report custody', () => {
+  it('keeps custody if shutdown begins while a report is in flight', async () => {
+    const { store } = fixture()
+    await store.enqueue(input, 100)
+    let running = true
+    await drainWorkerReports(
+      store,
+      async () => {
+        running = false
+        return accepted
+      },
+      100,
+      () => {},
+      () => running
+    )
+    expect(await store.pending()).toHaveLength(1)
+    await drainWorkerReports(store, async () => accepted, 100_000)
+    expect(await store.pending()).toEqual([])
+  })
+
   it('persists before send and recovers after both caller and runtime restart', async () => {
     const { root, store } = fixture()
     await store.enqueue(input, 100)
