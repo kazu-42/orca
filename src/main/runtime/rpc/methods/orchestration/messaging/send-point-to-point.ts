@@ -118,7 +118,7 @@ export function sendPointToPointMessage(args: {
       if (reconciled.action === 'suppressed') {
         return recordReceiptForPostCommitNudge(
           recordMutationReceipt,
-          withSendWarnings({ message: exposeMessage(msg) }),
+          withDelivery({ message: exposeMessage(msg) }),
           () => undefined
         )
       }
