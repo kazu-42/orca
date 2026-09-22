@@ -5,8 +5,7 @@ describe.each([undefined, 'workspace-a'])('guest reload target workspace %s', (w
   it.each([false, true])('targets the source page for hard reload = %s', (hardReload) => {
     const send = vi.fn()
     const preventDefault = vi.fn()
-    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: The dispatcher only calls preventDefault on this event.
-    const event = { preventDefault } as Electron.Event
+    const event: Electron.Event = { preventDefault, defaultPrevented: false }
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Reload dispatch only uses the renderer send method.
     const renderer = { send, reloadIgnoringCache: vi.fn() } as unknown as Electron.WebContents
     const forwarded = forwardGuestShortcutInput(
