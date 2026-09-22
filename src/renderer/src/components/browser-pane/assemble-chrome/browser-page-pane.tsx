@@ -280,6 +280,7 @@ export function BrowserPagePane({
     browserTabId: browserTab.id,
     workspaceId,
     isActive,
+    chromeShortcutScope,
     isActiveRef,
     markupIsActive: markup.isActive,
     webviewRef,

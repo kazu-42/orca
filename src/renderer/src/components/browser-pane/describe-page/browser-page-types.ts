@@ -1,5 +1,6 @@
 import type { BrowserGrabPayload } from '../../../../../shared/browser-grab-types'
 import type { BrowserPage as BrowserPageState } from '../../../../../shared/browser-workspace-types'
+import type { RuntimeBrowserClientPlacement } from '../../../../../shared/runtime-browser-placement'
 
 export type BrowserTabPageState = Partial<
   Pick<
@@ -15,6 +16,19 @@ export type BrowserPageUrlSetter = (
 ) => void
 
 export type BrowserChromeShortcutScope = 'focused' | 'inactive' | 'owned-target'
+
+export type ClientHostedBrowserPagePaneProps = {
+  browserTab: BrowserPageState
+  workspaceId: string
+  runtimeEnvironmentId: string
+  worktreeId: string
+  /** Null until the host mints the optimistic tab placement. */
+  placement: RuntimeBrowserClientPlacement | null
+  isActive: boolean
+  chromeShortcutScope: BrowserChromeShortcutScope
+  onUpdatePageState: (tabId: string, updates: BrowserTabPageState) => void
+  onSetUrl: BrowserPageUrlSetter
+}
 
 export type GrabIntent = 'copy' | 'annotate'
 

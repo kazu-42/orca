@@ -4,12 +4,13 @@ import { useAppStore } from '@/store'
 import { keybindingMatchesAction } from '../../../../../shared/keybindings'
 import { isEditableKeyboardTarget } from './browser-keyboard'
 import { useBrowserPageWebviewShortcuts } from './use-browser-page-webview-shortcuts'
-import type { GrabIntent } from '../describe-page/browser-page-types'
+import type { GrabIntent, BrowserChromeShortcutScope } from '../describe-page/browser-page-types'
 
 export function useBrowserPageKeyboardShortcuts({
   browserTabId,
   workspaceId,
   isActive,
+  chromeShortcutScope,
   isActiveRef,
   markupIsActive,
   webviewRef,
@@ -24,6 +25,7 @@ export function useBrowserPageKeyboardShortcuts({
   browserTabId: string
   workspaceId: string
   isActive: boolean
+  chromeShortcutScope: BrowserChromeShortcutScope
   isActiveRef: MutableRefObject<boolean>
   markupIsActive: boolean
   webviewRef: MutableRefObject<Electron.WebviewTag | null>
@@ -41,6 +43,7 @@ export function useBrowserPageKeyboardShortcuts({
     browserTabId,
     workspaceId,
     isActive,
+    chromeShortcutScope,
     isActiveRef,
     webviewRef,
     paneZoomLevelRef,

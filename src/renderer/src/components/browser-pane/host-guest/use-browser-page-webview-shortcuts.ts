@@ -3,6 +3,8 @@ import { getShortcutPlatform } from '@/hooks/useShortcutLabel'
 import { useAppStore } from '@/store'
 import { keybindingMatchesAction } from '../../../../../shared/keybindings'
 import { isEditableKeyboardTarget } from './browser-keyboard'
+import { browserOverlayOwnsShortcutTarget } from '../describe-page/browser-overlay-shortcut-target'
+import type { BrowserChromeShortcutScope } from '../describe-page/browser-page-types'
 import type { BrowserFindTarget } from '../../../../../shared/browser-find-source'
 import {
   addBrowserPageZoomEventListener,
@@ -20,6 +22,7 @@ export function useBrowserPageWebviewShortcuts({
   browserTabId,
   workspaceId,
   isActive,
+  chromeShortcutScope,
   isActiveRef,
   webviewRef,
   paneZoomLevelRef,
@@ -30,6 +33,7 @@ export function useBrowserPageWebviewShortcuts({
   browserTabId: string
   workspaceId: string
   isActive: boolean
+  chromeShortcutScope: BrowserChromeShortcutScope
   isActiveRef: MutableRefObject<boolean>
   webviewRef: MutableRefObject<Electron.WebviewTag | null>
   paneZoomLevelRef: MutableRefObject<number>
@@ -42,11 +46,18 @@ export function useBrowserPageWebviewShortcuts({
   // Browser history shortcuts (renderer path: focus on browser chrome)
   // Why: macOS can't deliver Logitech side-buttons to Electron; Logi Options+ remaps them to history chords, handled here when chrome is focused.
   useEffect(() => {
-    if (!isActive) {
+    if (!isActive || chromeShortcutScope === 'inactive') {
       return
     }
     const shortcutPlatform = getShortcutPlatform()
     const handleKeyDown = (e: KeyboardEvent): void => {
+      if (
+        isEditableKeyboardTarget(e.target) ||
+        (chromeShortcutScope === 'owned-target' &&
+          !browserOverlayOwnsShortcutTarget(e.target, workspaceId))
+      ) {
+        return
+      }
       const direction = keybindingMatchesAction('browser.back', e, shortcutPlatform, keybindings)
         ? 'back'
         : keybindingMatchesAction('browser.forward', e, shortcutPlatform, keybindings)
@@ -66,7 +77,7 @@ export function useBrowserPageWebviewShortcuts({
     }
     window.addEventListener('keydown', handleKeyDown, true)
     return () => window.removeEventListener('keydown', handleKeyDown, true)
-  }, [isActive, keybindings, webviewRef])
+  }, [isActive, chromeShortcutScope, workspaceId, keybindings, webviewRef])
 
   // Browser history shortcuts (IPC path: focus inside webview guest)
   // Why: a focused webview is a separate WebContents, so main forwards the chords back here.
@@ -90,7 +101,7 @@ export function useBrowserPageWebviewShortcuts({
   // Cmd/Ctrl+R — reload (renderer path: focus on browser chrome, not in guest)
   // Why: guest shortcut forwarding never fires when focus is on browser chrome, so handle the chord directly here.
   useEffect(() => {
-    if (!isActive) {
+    if (!isActive || chromeShortcutScope === 'inactive') {
       return
     }
     const shortcutPlatform = getShortcutPlatform()
@@ -105,7 +116,11 @@ export function useBrowserPageWebviewShortcuts({
       if (!isHardReload && !isReload) {
         return
       }
-      if (isEditableKeyboardTarget(e.target)) {
+      if (
+        isEditableKeyboardTarget(e.target) ||
+        (chromeShortcutScope === 'owned-target' &&
+          !browserOverlayOwnsShortcutTarget(e.target, workspaceId))
+      ) {
         return
       }
       e.preventDefault()
@@ -114,7 +129,7 @@ export function useBrowserPageWebviewShortcuts({
     }
     window.addEventListener('keydown', handleKeyDown, true)
     return () => window.removeEventListener('keydown', handleKeyDown, true)
-  }, [isActive, keybindings, reloadWebviewOrRecoverGuest])
+  }, [isActive, chromeShortcutScope, workspaceId, keybindings, reloadWebviewOrRecoverGuest])
 
   // Cmd/Ctrl+R — reload (IPC path: focus inside webview guest)
   // Why: a focused guest is a separate Chromium process, so main forwards the chord back here.

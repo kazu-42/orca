@@ -2,6 +2,7 @@
 import { cleanup, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BrowserFindTarget } from '../../../../../shared/browser-find-source'
+import type { BrowserChromeShortcutScope } from '../describe-page/browser-page-types'
 import { installClientHostedPaneApi, paneChannel } from '../client-hosted-browser-pane-test-rig'
 import { useBrowserPageWebviewShortcuts } from './use-browser-page-webview-shortcuts'
 
@@ -22,9 +23,18 @@ beforeEach(() => {
     }
   })
 })
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+  document.body.replaceChildren()
+})
 
-function mountPane(browserTabId: string, workspaceId = 'workspace-a', isActive = true) {
+function mountPane(
+  browserTabId: string,
+  workspaceId = 'workspace-a',
+  isActive = true,
+  chromeShortcutScope: BrowserChromeShortcutScope = 'focused'
+) {
   const webview = Object.assign(document.createElement('webview'), {
     goBack: vi.fn(),
     goForward: vi.fn()
@@ -35,6 +45,7 @@ function mountPane(browserTabId: string, workspaceId = 'workspace-a', isActive =
       browserTabId,
       workspaceId,
       isActive,
+      chromeShortcutScope,
       // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: The hook only calls the mocked navigation methods in these tests.
       webviewRef: { current: webview as unknown as Electron.WebviewTag },
       isActiveRef: { current: isActive },
@@ -75,7 +86,7 @@ function expectCalls(
 describe('forwarded browser navigation in split panes', () => {
   it.each(actions)('%s reaches only the source page', (action) => {
     const first = mountPane('page-a')
-    const second = mountPane('page-b')
+    const second = mountPane('page-b', 'workspace-a', true, 'inactive')
     emit(action, { browserPageId: 'page-b', browserWorkspaceId: 'workspace-a' })
     expectCalls(first, action, 0)
     expectCalls(second, action, 1)
@@ -115,10 +126,52 @@ describe('forwarded browser navigation in split panes', () => {
   })
 })
 
+describe('browser chrome ownership without a focused group', () => {
+  it.each(actions)('%s only reaches the overlay owning its target', (action) => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Macintosh')
+    const first = mountPane('page-a', 'workspace-a', true, 'owned-target')
+    const second = mountPane('page-b', 'workspace-b', true, 'owned-target')
+    const overlay = document.createElement('div')
+    overlay.dataset.browserOverlayTabId = 'workspace-b'
+    const button = document.createElement('button')
+    overlay.append(button)
+    document.body.append(overlay)
+    const event = new KeyboardEvent('keydown', {
+      key: action === 'back' ? '[' : action === 'forward' ? ']' : 'r',
+      metaKey: true,
+      shiftKey: action === 'hardReload',
+      bubbles: true,
+      cancelable: true
+    })
+    button.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(true)
+    expectCalls(first, action, 0)
+    expectCalls(second, action, 1)
+  })
+
+  it.each(actions)('%s leaves editable targets alone', (action) => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Macintosh')
+    const pane = mountPane('page-a')
+    const input = document.createElement('input')
+    document.body.append(input)
+    const event = new KeyboardEvent('keydown', {
+      key: action === 'back' ? '[' : action === 'forward' ? ']' : 'r',
+      metaKey: true,
+      shiftKey: action === 'hardReload',
+      bubbles: true,
+      cancelable: true
+    })
+    input.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(false)
+    expectCalls(pane, action, 0)
+  })
+})
+
 describe.each(['Macintosh', 'Windows', 'Linux'])('browser chrome on %s', (platform) => {
   it.each(actions)('preserves the %s shortcut', (action) => {
     vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(platform)
     const pane = mountPane('page-a')
+    const sibling = mountPane('page-b', 'workspace-b', true, 'inactive')
     const isMac = platform === 'Macintosh'
     const isHistory = action === 'back' || action === 'forward'
     const key = isHistory
@@ -141,6 +194,7 @@ describe.each(['Macintosh', 'Windows', 'Linux'])('browser chrome on %s', (platfo
     window.dispatchEvent(event)
     expect(event.defaultPrevented).toBe(true)
     expectCalls(pane, action, 1)
+    expectCalls(sibling, action, 0)
     vi.restoreAllMocks()
   })
 })
