@@ -8,7 +8,7 @@ import type {
 } from '../../shared/worktree/launch-types'
 import type { FeatureInteractionId } from '../../shared/feature-interactions'
 import type { KeybindingActionId } from '../../shared/keybindings'
-import type { BrowserFindSource } from '../../shared/browser-find-source'
+import type { BrowserFindSource, BrowserFindTarget } from '../../shared/browser-find-source'
 import type {
   AgentProviderSessionMetadata,
   SleepingAgentLaunchConfig
@@ -108,13 +108,15 @@ export type UiCommandEventApi = {
   onNewTerminalTab: (callback: () => void) => () => void
   onFocusBrowserAddressBar: (callback: () => void) => () => void
   onFindInBrowserPage: (source: BrowserFindSource, callback: () => void) => () => void
-  onReloadBrowserPage: (callback: () => void) => () => void
-  onBrowserHistoryNavigate: (callback: (direction: 'back' | 'forward') => void) => () => void
+  onReloadBrowserPage: (callback: (target?: BrowserFindTarget) => void) => () => void
+  onBrowserHistoryNavigate: (
+    callback: (direction: 'back' | 'forward', target?: BrowserFindTarget) => void
+  ) => () => void
   onZoomBrowserPage: (callback: (direction: 'in' | 'out' | 'reset') => void) => () => void
   onScrollBrowserPage?: (
     callback: (event: { browserPageId: string; deltaX: number; deltaY: number }) => void
   ) => () => void
-  onHardReloadBrowserPage: (callback: () => void) => () => void
+  onHardReloadBrowserPage: (callback: (target?: BrowserFindTarget) => void) => () => void
   onCloseActiveTab: (callback: (payload?: CloseActiveTabPayload) => void) => () => void
   onCloseFloatingItem: (callback: (payload: { sourceId: string }) => void) => () => void
   onSelectFloatingIndex: (callback: (payload: { index: number }) => void) => () => void

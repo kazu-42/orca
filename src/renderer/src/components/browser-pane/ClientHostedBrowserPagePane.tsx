@@ -156,6 +156,7 @@ export function ClientHostedBrowserPagePane({
   })
   useBrowserPageWebviewShortcuts({
     browserTabId: browserTab.id,
+    workspaceId,
     isActive,
     isActiveRef,
     webviewRef,

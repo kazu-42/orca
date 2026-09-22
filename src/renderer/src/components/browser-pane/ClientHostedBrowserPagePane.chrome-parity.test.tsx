@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { BrowserFindTarget } from '../../../../shared/browser-find-source'
 import type {
   BrowserCertificateFailure,
   BrowserLoadError,
@@ -44,9 +45,9 @@ let contextMenu = paneChannel<BrowserContextMenuRequestedEvent>()
 let contextMenuDismissed = paneChannel<{ browserPageId: string }>()
 let permissionDenied = paneChannel<BrowserPermissionDeniedEvent>()
 let findRequests = paneChannel<void>()
-let historyNavigate = paneChannel<'back' | 'forward'>()
-let reloadRequests = paneChannel<void>()
-let hardReloadRequests = paneChannel<void>()
+let historyNavigate = paneChannel<{ direction: 'back' | 'forward'; target?: BrowserFindTarget }>()
+let reloadRequests = paneChannel<BrowserFindTarget | undefined>()
+let hardReloadRequests = paneChannel<BrowserFindTarget | undefined>()
 let zoomRequests = paneChannel<'in' | 'out' | 'reset'>()
 let openDevTools = vi.fn(async () => true)
 let proceedCertificate = vi.fn(async () => ({ ok: true as const }))
@@ -78,9 +79,11 @@ beforeEach(() => {
     ui: {
       onFindInBrowserPage: (_source: unknown, callback: () => void) =>
         findRequests.subscribe(callback),
-      onBrowserHistoryNavigate: historyNavigate.subscribe,
-      onReloadBrowserPage: (callback: () => void) => reloadRequests.subscribe(callback),
-      onHardReloadBrowserPage: (callback: () => void) => hardReloadRequests.subscribe(callback),
+      onBrowserHistoryNavigate: (
+        callback: (direction: 'back' | 'forward', target?: BrowserFindTarget) => void
+      ) => historyNavigate.subscribe(({ direction, target }) => callback(direction, target)),
+      onReloadBrowserPage: reloadRequests.subscribe,
+      onHardReloadBrowserPage: hardReloadRequests.subscribe,
       onZoomBrowserPage: zoomRequests.subscribe,
       writeClipboardText
     },
@@ -136,23 +139,29 @@ describe('ClientHostedBrowserPagePane chrome parity', () => {
 
   it('reloads and hard-reloads the retained guest from the forwarded chords', () => {
     const { webview } = renderPane()
+    const other = renderPane({ id: 'page-b' }).webview
 
-    act(() => reloadRequests.emit(undefined))
+    act(() => reloadRequests.emit({ browserPageId: 'page-a' }))
     expect(webview.reload).toHaveBeenCalledTimes(1)
     expect(webview.reloadIgnoringCache).not.toHaveBeenCalled()
 
-    act(() => hardReloadRequests.emit(undefined))
+    act(() => hardReloadRequests.emit({ browserPageId: 'page-a' }))
     expect(webview.reloadIgnoringCache).toHaveBeenCalledTimes(1)
+    expect(other.reload).not.toHaveBeenCalled()
+    expect(other.reloadIgnoringCache).not.toHaveBeenCalled()
   })
 
   it('walks history from the forwarded chords', () => {
     const { webview } = renderPane()
+    const other = renderPane({ id: 'page-b' }).webview
 
-    act(() => historyNavigate.emit('back'))
-    act(() => historyNavigate.emit('forward'))
+    act(() => historyNavigate.emit({ direction: 'back', target: { browserPageId: 'page-a' } }))
+    act(() => historyNavigate.emit({ direction: 'forward', target: { browserPageId: 'page-a' } }))
 
     expect(webview.goBack).toHaveBeenCalledTimes(1)
     expect(webview.goForward).toHaveBeenCalledTimes(1)
+    expect(other.goBack).not.toHaveBeenCalled()
+    expect(other.goForward).not.toHaveBeenCalled()
   })
 
   it('zooms the retained guest and shows the level while the chord lands', () => {

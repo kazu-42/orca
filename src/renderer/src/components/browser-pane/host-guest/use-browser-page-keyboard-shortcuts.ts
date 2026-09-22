@@ -8,6 +8,7 @@ import type { GrabIntent } from '../describe-page/browser-page-types'
 
 export function useBrowserPageKeyboardShortcuts({
   browserTabId,
+  workspaceId,
   isActive,
   isActiveRef,
   markupIsActive,
@@ -21,6 +22,7 @@ export function useBrowserPageKeyboardShortcuts({
   grabIsInteractive
 }: {
   browserTabId: string
+  workspaceId: string
   isActive: boolean
   isActiveRef: MutableRefObject<boolean>
   markupIsActive: boolean
@@ -37,6 +39,7 @@ export function useBrowserPageKeyboardShortcuts({
 
   useBrowserPageWebviewShortcuts({
     browserTabId,
+    workspaceId,
     isActive,
     isActiveRef,
     webviewRef,

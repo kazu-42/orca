@@ -7,6 +7,7 @@ import type {
 } from '../../shared/worktree/launch-types'
 import { browserFindSubscriptions } from '../preload-runtime-support'
 import type { PreloadApi } from '../api-types'
+import { asBrowserFindTarget, type BrowserFindTarget } from '../../shared/browser-find-source'
 
 export const uiTabAndBrowserCommandsApi = {
   onRequestTabSetProfile: (
@@ -60,14 +61,29 @@ export const uiTabAndBrowserCommandsApi = {
     return () => ipcRenderer.removeListener('ui:focusBrowserAddressBar', listener)
   },
   onFindInBrowserPage: browserFindSubscriptions.subscribe,
-  onReloadBrowserPage: (callback: () => void): (() => void) => {
-    const listener = (_event: Electron.IpcRendererEvent) => callback()
+  onReloadBrowserPage: (callback: (target?: BrowserFindTarget) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, target?: unknown) => {
+      const admitted = asBrowserFindTarget(target)
+      if (target === undefined || admitted) {
+        callback(admitted ?? undefined)
+      }
+    }
     ipcRenderer.on('ui:reloadBrowserPage', listener)
     return () => ipcRenderer.removeListener('ui:reloadBrowserPage', listener)
   },
-  onBrowserHistoryNavigate: (callback: (direction: 'back' | 'forward') => void): (() => void) => {
-    const listener = (_event: Electron.IpcRendererEvent, direction: 'back' | 'forward'): void =>
-      callback(direction)
+  onBrowserHistoryNavigate: (
+    callback: (direction: 'back' | 'forward', target?: BrowserFindTarget) => void
+  ): (() => void) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      direction: 'back' | 'forward',
+      target?: unknown
+    ): void => {
+      const admitted = asBrowserFindTarget(target)
+      if (target === undefined || admitted) {
+        callback(direction, admitted ?? undefined)
+      }
+    }
     ipcRenderer.on('ui:browserHistoryNavigate', listener)
     return () => ipcRenderer.removeListener('ui:browserHistoryNavigate', listener)
   },
@@ -87,8 +103,13 @@ export const uiTabAndBrowserCommandsApi = {
     ipcRenderer.on('ui:scrollBrowserPage', listener)
     return () => ipcRenderer.removeListener('ui:scrollBrowserPage', listener)
   },
-  onHardReloadBrowserPage: (callback: () => void): (() => void) => {
-    const listener = (_event: Electron.IpcRendererEvent) => callback()
+  onHardReloadBrowserPage: (callback: (target?: BrowserFindTarget) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, target?: unknown) => {
+      const admitted = asBrowserFindTarget(target)
+      if (target === undefined || admitted) {
+        callback(admitted ?? undefined)
+      }
+    }
     ipcRenderer.on('ui:hardReloadBrowserPage', listener)
     return () => ipcRenderer.removeListener('ui:hardReloadBrowserPage', listener)
   },

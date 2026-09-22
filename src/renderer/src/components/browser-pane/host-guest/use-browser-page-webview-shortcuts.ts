@@ -3,6 +3,7 @@ import { getShortcutPlatform } from '@/hooks/useShortcutLabel'
 import { useAppStore } from '@/store'
 import { keybindingMatchesAction } from '../../../../../shared/keybindings'
 import { isEditableKeyboardTarget } from './browser-keyboard'
+import type { BrowserFindTarget } from '../../../../../shared/browser-find-source'
 import {
   addBrowserPageZoomEventListener,
   applyBrowserPageZoom,
@@ -17,6 +18,7 @@ import {
  */
 export function useBrowserPageWebviewShortcuts({
   browserTabId,
+  workspaceId,
   isActive,
   isActiveRef,
   webviewRef,
@@ -26,6 +28,7 @@ export function useBrowserPageWebviewShortcuts({
   reloadWebviewOrRecoverGuest
 }: {
   browserTabId: string
+  workspaceId: string
   isActive: boolean
   isActiveRef: MutableRefObject<boolean>
   webviewRef: MutableRefObject<Electron.WebviewTag | null>
@@ -71,7 +74,10 @@ export function useBrowserPageWebviewShortcuts({
     if (!isActive) {
       return
     }
-    return window.api.ui.onBrowserHistoryNavigate((direction) => {
+    return window.api.ui.onBrowserHistoryNavigate((direction, target) => {
+      if (!matchesBrowserTarget(target, browserTabId, workspaceId)) {
+        return
+      }
       // Why: Logitech Options+ side-button remaps arrive as these chords on macOS; route through the same nav path as the toolbar.
       if (direction === 'back') {
         webviewRef.current?.goBack()
@@ -79,7 +85,7 @@ export function useBrowserPageWebviewShortcuts({
         webviewRef.current?.goForward()
       }
     })
-  }, [isActive, webviewRef])
+  }, [browserTabId, workspaceId, isActive, webviewRef])
 
   // Cmd/Ctrl+R — reload (renderer path: focus on browser chrome, not in guest)
   // Why: guest shortcut forwarding never fires when focus is on browser chrome, so handle the chord directly here.
@@ -116,19 +122,25 @@ export function useBrowserPageWebviewShortcuts({
     if (!isActive) {
       return
     }
-    return window.api.ui.onReloadBrowserPage(() => {
+    return window.api.ui.onReloadBrowserPage((target) => {
+      if (!matchesBrowserTarget(target, browserTabId, workspaceId)) {
+        return
+      }
       reloadWebviewOrRecoverGuest(false)
     })
-  }, [isActive, reloadWebviewOrRecoverGuest])
+  }, [browserTabId, workspaceId, isActive, reloadWebviewOrRecoverGuest])
 
   useEffect(() => {
     if (!isActive) {
       return
     }
-    return window.api.ui.onHardReloadBrowserPage(() => {
+    return window.api.ui.onHardReloadBrowserPage((target) => {
+      if (!matchesBrowserTarget(target, browserTabId, workspaceId)) {
+        return
+      }
       reloadWebviewOrRecoverGuest(true)
     })
-  }, [isActive, reloadWebviewOrRecoverGuest])
+  }, [browserTabId, workspaceId, isActive, reloadWebviewOrRecoverGuest])
 
   useEffect(() => {
     if (!isActive) {
@@ -167,4 +179,16 @@ export function useBrowserPageWebviewShortcuts({
     showBrowserZoomFeedback,
     webviewRef
   ])
+}
+
+function matchesBrowserTarget(
+  target: BrowserFindTarget | undefined,
+  pageId: string,
+  workspaceId: string
+): boolean {
+  return (
+    target === undefined ||
+    (target.browserPageId === pageId &&
+      (target.browserWorkspaceId === undefined || target.browserWorkspaceId === workspaceId))
+  )
 }

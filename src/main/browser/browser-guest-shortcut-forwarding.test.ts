@@ -545,30 +545,37 @@ describe('setupGuestShortcutForwarding', () => {
     expect(rendererSendMock).toHaveBeenNthCalledWith(6, 'ui:zoomBrowserPage', 'in')
   })
 
-  it('forwards browser history shortcuts from focused guest pages', () => {
-    setupGuestShortcutForwarding({
-      browserTabId,
-      guest: makeGuest(),
-      resolveRenderer: () => makeRenderer()
-    })
+  it.each([undefined, 'workspace-1'])(
+    'forwards browser history with source workspace %s',
+    (workspaceId) => {
+      setupGuestShortcutForwarding({
+        browserTabId,
+        guest: makeGuest(),
+        resolveRenderer: () => makeRenderer(),
+        resolveWorkspaceId: () => workspaceId ?? null
+      })
 
-    const backInput =
-      process.platform === 'darwin'
-        ? { code: 'BracketLeft', key: '[', meta: true, control: false, alt: false }
-        : { code: 'ArrowLeft', key: 'ArrowLeft', meta: false, control: false, alt: true }
-    const forwardInput =
-      process.platform === 'darwin'
-        ? { code: 'BracketRight', key: ']', meta: true, control: false, alt: false }
-        : { code: 'ArrowRight', key: 'ArrowRight', meta: false, control: false, alt: true }
+      const backInput =
+        process.platform === 'darwin'
+          ? { code: 'BracketLeft', key: '[', meta: true, control: false, alt: false }
+          : { code: 'ArrowLeft', key: 'ArrowLeft', meta: false, control: false, alt: true }
+      const forwardInput =
+        process.platform === 'darwin'
+          ? { code: 'BracketRight', key: ']', meta: true, control: false, alt: false }
+          : { code: 'ArrowRight', key: 'ArrowRight', meta: false, control: false, alt: true }
 
-    const backPreventDefault = triggerBeforeInput(backInput)
-    const forwardPreventDefault = triggerBeforeInput(forwardInput)
+      const backPreventDefault = triggerBeforeInput(backInput)
+      const forwardPreventDefault = triggerBeforeInput(forwardInput)
 
-    expect(backPreventDefault).toHaveBeenCalledTimes(1)
-    expect(forwardPreventDefault).toHaveBeenCalledTimes(1)
-    expect(rendererSendMock).toHaveBeenNthCalledWith(1, 'ui:browserHistoryNavigate', 'back')
-    expect(rendererSendMock).toHaveBeenNthCalledWith(2, 'ui:browserHistoryNavigate', 'forward')
-  })
+      expect(backPreventDefault).toHaveBeenCalledTimes(1)
+      expect(forwardPreventDefault).toHaveBeenCalledTimes(1)
+      const target = { browserPageId: browserTabId, browserWorkspaceId: workspaceId }
+      expect(rendererSendMock.mock.calls).toEqual([
+        ['ui:browserHistoryNavigate', 'back', target],
+        ['ui:browserHistoryNavigate', 'forward', target]
+      ])
+    }
+  )
 
   it('forwards browser Find with its registered page and workspace owner', () => {
     setupGuestShortcutForwarding({

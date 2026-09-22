@@ -119,6 +119,10 @@ export function forwardGuestShortcutInput(
   }
   // Why: floating-panel guests route close/index chords to the panel (carrying their source id) so they hit the floating workspace, not the main tab strip.
   const isFloatingGuest = resolveWorktreeId?.(browserTabId) === FLOATING_TERMINAL_WORKTREE_ID
+  const target: BrowserFindTarget = {
+    browserPageId: browserTabId,
+    browserWorkspaceId: resolveWorkspaceId?.(browserTabId) || undefined
+  }
   if (keybindingMatchesAction('tab.newBrowser', input, process.platform, keybindings)) {
     renderer.send('ui:newBrowserTab')
   } else if (
@@ -139,23 +143,21 @@ export function forwardGuestShortcutInput(
     renderer.send('ui:focusBrowserAddressBar')
   } else if (keybindingMatchesAction('browser.hardReload', input, process.platform, keybindings)) {
     // Why: forward hard reload so reloadIgnoringCache() runs on the renderer's parked-webview ref that owns the guest surface.
-    renderer.send('ui:hardReloadBrowserPage')
+    renderer.send('ui:hardReloadBrowserPage', target)
   } else if (keybindingMatchesAction('browser.reload', input, process.platform, keybindings)) {
     // Why: forward soft reload so the renderer's reload() hits the parked-webview eviction the guest's built-in shortcut skips.
-    renderer.send('ui:reloadBrowserPage')
+    renderer.send('ui:reloadBrowserPage', target)
   } else if (keybindingMatchesAction('browser.find', input, process.platform, keybindings)) {
     // Why: active browser splits share one renderer; preserve the registered guest owner so only
     // its Find bar opens. A client-hosted guest has no registered workspace, and dropping the
     // chord there both suppressed it in the guest and delivered nothing.
-    const browserWorkspaceId = resolveWorkspaceId?.(browserTabId) || undefined
-    const target: BrowserFindTarget = { browserPageId: browserTabId, browserWorkspaceId }
     renderer.send('ui:findInBrowserPage', target)
   } else if (keybindingMatchesAction('browser.back', input, process.platform, keybindings)) {
     // Why: macOS Logitech side-button remaps arrive as history keystrokes, not mouse events; forward so the renderer can goBack().
-    renderer.send('ui:browserHistoryNavigate', 'back')
+    renderer.send('ui:browserHistoryNavigate', 'back', target)
   } else if (keybindingMatchesAction('browser.forward', input, process.platform, keybindings)) {
     // Why: same as browser.back; the focused guest cannot call the renderer-owned webview's goForward() directly.
-    renderer.send('ui:browserHistoryNavigate', 'forward')
+    renderer.send('ui:browserHistoryNavigate', 'forward', target)
   } else if (keybindingMatchesAction('tab.close', input, process.platform, keybindings)) {
     if (isFloatingGuest) {
       renderer.send('ui:closeFloatingItem', { sourceId: browserTabId })
