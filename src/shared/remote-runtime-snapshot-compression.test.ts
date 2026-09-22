@@ -9,6 +9,21 @@ import {
 } from './remote-runtime-snapshot-compression'
 
 describe('bounded runtime snapshot compression', () => {
+  it('keeps the legacy reply when input exceeds structural limits', () => {
+    const response = JSON.parse(bandwidthResponse(1))
+    let nested: unknown = 'leaf'
+    for (let depth = 0; depth < 65; depth++) {
+      nested = [nested]
+    }
+    response.result.futureField = nested
+    const serialized = JSON.stringify(response)
+    expect(compressRuntimeSnapshotResponse(serialized)).toBe(serialized)
+  })
+
+  it('does not hide malformed input JSON', () => {
+    expect(() => compressRuntimeSnapshotResponse('{invalid')).toThrow(SyntaxError)
+  })
+
   it('roundtrips every field without retaining dictionary state between frames', () => {
     const response = bandwidthResponse(1)
     const compressed = compressRuntimeSnapshotResponse(response)

@@ -33,7 +33,15 @@ export function compressRuntimeSnapshotResponse(response: string): string {
   if (response.length > MAX_RUNTIME_SNAPSHOT_COMPRESSION_BYTES) {
     return response
   }
-  const envelope: unknown = parseRemoteRuntimeJsonText(response)
+  let envelope: unknown
+  try {
+    envelope = parseRemoteRuntimeJsonText(response)
+  } catch (error) {
+    if (error instanceof JsonTextStructureCapacityError) {
+      return response
+    }
+    throw error
+  }
   if (
     !isRecord(envelope) ||
     envelope.ok !== true ||

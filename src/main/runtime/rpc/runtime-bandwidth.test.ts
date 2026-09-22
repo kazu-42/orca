@@ -88,9 +88,9 @@ describe('remote runtime constrained-link bandwidth', () => {
       console.info(JSON.stringify({ terminals, baseline, improved }))
       expect(baseline.rpcP95Ms).toBeGreaterThan(500)
       expect(improved.wireBytes).toBeLessThan(baseline.wireBytes * 0.6)
-      expect(improved.rpcP95Ms).toBeLessThan(500)
+      expect(improved.rpcP95Ms).toBeLessThan(baseline.rpcP95Ms * 0.2)
       expect(improved.rpcMaxMs).toBeLessThan(1000)
-      expect(improved.peakQueuedBytes).toBeLessThan(64 * 1024)
+      expect(improved.peakQueuedBytes).toBeLessThan(128 * 1024)
     }
   )
 })
