@@ -16,10 +16,7 @@ const TERMINAL_CODES = new Set([
   'run_destination_unsupported',
   'run_destination_unresolved',
   'invalid_argument',
-  'forbidden',
   'request_mismatch',
-  'orchestration_migration_required',
-  'incompatible_runtime',
   'invalid_capability',
   'dispatch_capability_invalid',
   'dispatch_capability_revoked'
@@ -78,6 +75,9 @@ export async function drainWorkerReports(
     const record = await store.claim(candidate.input.requestId, now)
     if (!record) {
       continue
+    }
+    if (!shouldContinue()) {
+      break
     }
     if (now - record.createdAt > WORKER_REPORT_RETRY_WINDOW_MS) {
       await store.settle(record.input.requestId, 'report_retry_expired', now)

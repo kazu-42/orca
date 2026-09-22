@@ -1,7 +1,7 @@
 import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { WorkerReportOutbox } from './worker-report-outbox'
 import { drainWorkerReports } from './worker-report-recovery'
 import type { WorkerReportInput } from './worker-report-record'
@@ -42,6 +42,31 @@ afterEach(() => {
 })
 
 describe('durable worker report custody', () => {
+  it('does not send when shutdown interrupts a durable claim', async () => {
+    const { store } = fixture()
+    await store.enqueue(input, 100)
+    let running = true
+    const claim = store.claim.bind(store)
+    vi.spyOn(store, 'claim').mockImplementation(async (...args) => {
+      const record = await claim(...args)
+      running = false
+      return record
+    })
+    const send = vi.fn(async () => accepted)
+    await drainWorkerReports(
+      store,
+      send,
+      100,
+      () => {},
+      () => running
+    )
+    expect(send).not.toHaveBeenCalled()
+    expect(await store.pending()).toHaveLength(1)
+    await drainWorkerReports(store, send, 100_000)
+    expect(send).toHaveBeenCalledOnce()
+    expect(await store.pending()).toEqual([])
+  })
+
   it('keeps custody if shutdown begins while a report is in flight', async () => {
     const { store } = fixture()
     await store.enqueue(input, 100)

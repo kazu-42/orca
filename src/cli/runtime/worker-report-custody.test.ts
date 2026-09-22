@@ -33,7 +33,12 @@ afterEach(() => {
 })
 
 describe('CLI worker report custody', () => {
-  it('retains a report when startup metadata contains a stale authentication token', async () => {
+  it.each([
+    'unauthorized',
+    'forbidden',
+    'orchestration_migration_required',
+    'incompatible_runtime'
+  ])('retains a report after a pre-effect %s refusal', async (code) => {
     const { root, store } = fixture()
     await expect(
       callWithWorkerReportCustody({
@@ -42,7 +47,7 @@ describe('CLI worker report custody', () => {
         params,
         options,
         send: async () => {
-          throw new RuntimeClientError('unauthorized', 'stale token')
+          throw new RuntimeClientError(code, 'admission refused')
         }
       })
     ).rejects.toMatchObject({ code: 'worker_report_pending' })
@@ -80,7 +85,7 @@ describe('CLI worker report custody', () => {
   })
 
   it.each([
-    'orchestration_migration_required',
+    'dispatch_capability_revoked',
     'run_destination_unsupported',
     'run_destination_unresolved',
     'dispatch_capability_invalid'
