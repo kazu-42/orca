@@ -87,20 +87,17 @@ beforeEach(() => {
 })
 
 describe('createNotificationDeliveryService', () => {
-  it.each(['folder:ordinary', 'repo::/ordinary-folder'])(
-    'keeps ordinary folder workspace %s enabled when both provenance settings are off',
-    (worktreeId) => {
-      const harness = makeHarness(
-        makeSettings({ cliWorktreeTaskComplete: false, automationWorktreeTaskComplete: false })
-      )
-      expect(
-        createNotificationDeliveryService(harness.deps).dispatch(makeRequest({ worktreeId }))
-      ).toEqual({ delivered: true })
-      expect(harness.dispatchMobileNotification).toHaveBeenCalledWith(
-        expect.not.objectContaining({ desktopAllowed: false })
-      )
-    }
-  )
+  it('keeps requests without workspace origin enabled when both provenance settings are off', () => {
+    const harness = makeHarness(
+      makeSettings({ cliWorktreeTaskComplete: false, automationWorktreeTaskComplete: false })
+    )
+    expect(createNotificationDeliveryService(harness.deps).dispatch(makeRequest())).toEqual({
+      delivered: true
+    })
+    expect(harness.dispatchMobileNotification).toHaveBeenCalledWith(
+      expect.not.objectContaining({ desktopAllowed: false })
+    )
+  })
 
   it.each(['blocked', 'waiting'] as const)(
     'preserves %s attention banners and phone pushes when provenance completions are muted',
