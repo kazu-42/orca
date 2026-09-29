@@ -10,6 +10,7 @@ import type { GlobalSettings } from './global-settings-types'
 export const AGENT_KIND_VALUES = [
   'claude-code',
   'claude-agent-teams',
+  'codebuddy',
   'openclaude',
   'codex',
   'autohand',
@@ -19,6 +20,7 @@ export const AGENT_KIND_VALUES = [
   'pi',
   'omp',
   'prime-agent',
+  'qoder',
   'gemini',
   'antigravity',
   'aider',
@@ -46,6 +48,9 @@ export const AGENT_KIND_VALUES = [
   'devin',
   'ante',
   'trae',
+  'muse',
+  'dsh',
+  'zcode',
   'other'
 ] as const
 export const agentKindSchema = z.enum(AGENT_KIND_VALUES)
