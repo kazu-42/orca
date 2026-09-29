@@ -4,12 +4,14 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as esbuild from 'esbuild'
 import { buildMobileWebAppBundle } from './build-mobile-web-app-bundle.mjs'
-import { isDirectInvocation } from './build-mobile-web-bundle.mjs'
-import { assertNoCarriageReturnsInSource } from './verify-mobile-web-bundle.mjs'
-import { assertMobileWebBundleBuilt } from './verify-packaged-mobile-web-bundle.cjs'
+import { isDirectInvocation } from './script-entry-detection.mjs'
+import { assertNoCarriageReturnsInSource } from './mobile-web-source-line-endings.mjs'
+import {
+  MOBILE_WEB_BUNDLE_DIR as defaultBundleDir,
+  assertMobileWebBundleBuilt
+} from './verify-packaged-mobile-web-bundle.cjs'
 
 const projectDir = fileURLToPath(new URL('../..', import.meta.url))
-const defaultBundleDir = join(projectDir, 'out', 'mobile-web-app')
 const manifestContract = join(
   projectDir,
   'src',
@@ -49,26 +51,29 @@ export const MOBILE_WEB_APP_BUNDLE_MAX_TOTAL_BYTES = 9 * 1024 * 1024
  * what it fails to share rather than what it weighs. Re-measured on this head by building
  * `routes.slice(0, n)` for every n, which is what the fence below is derived from rather than
  * fitted to. The spread it shows is 1 to 9: `pr` and `web` add one script each, `review` adds nine.
+ * The root `./_layout.tsx` (the page's web sibling of the native root) sorts first; with it the
+ * swept tree reads 69 scripts at 16 routes, the old 15 read 67 on the same head.
  *
  * This table is the fence's only input, so a route added to the tree stales it and the pins beside
  * the fence fail until it is re-measured. That is the point: the bound is re-derived, never bumped.
  */
 export const MOBILE_WEB_APP_BUNDLE_SCRIPT_SWEEP = [
-  ['./h/[hostId]/[...page].tsx', 3],
-  ['./h/[hostId]/accounts.tsx', 7],
-  ['./h/[hostId]/agent-history/[worktreeId].tsx', 11],
-  ['./h/[hostId]/edit.tsx', 16],
-  ['./h/[hostId]/files/[worktreeId].tsx', 19],
-  ['./h/[hostId]/files/preview/[worktreeId].tsx', 26],
-  ['./h/[hostId]/history/[worktreeId].tsx', 28],
-  ['./h/[hostId]/index.tsx', 33],
-  ['./h/[hostId]/pr/[worktreeId].tsx', 34],
-  ['./h/[hostId]/review/[worktreeId].tsx', 43],
-  ['./h/[hostId]/session/[worktreeId].tsx', 51],
-  ['./h/[hostId]/source-control/[worktreeId].tsx', 56],
-  ['./h/[hostId]/tasks.tsx', 63],
-  ['./h/[hostId]/web.tsx', 64],
-  ['./h/_layout.tsx', 66]
+  ['./_layout.tsx', 3],
+  ['./h/[hostId]/[...page].tsx', 7],
+  ['./h/[hostId]/accounts.tsx', 9],
+  ['./h/[hostId]/agent-history/[worktreeId].tsx', 13],
+  ['./h/[hostId]/edit.tsx', 18],
+  ['./h/[hostId]/files/[worktreeId].tsx', 21],
+  ['./h/[hostId]/files/preview/[worktreeId].tsx', 28],
+  ['./h/[hostId]/history/[worktreeId].tsx', 30],
+  ['./h/[hostId]/index.tsx', 35],
+  ['./h/[hostId]/pr/[worktreeId].tsx', 36],
+  ['./h/[hostId]/review/[worktreeId].tsx', 45],
+  ['./h/[hostId]/session/[worktreeId].tsx', 54],
+  ['./h/[hostId]/source-control/[worktreeId].tsx', 59],
+  ['./h/[hostId]/tasks.tsx', 66],
+  ['./h/[hostId]/web.tsx', 67],
+  ['./h/_layout.tsx', 69]
 ]
 
 const sweptScripts = MOBILE_WEB_APP_BUNDLE_SCRIPT_SWEEP.map(([, scripts]) => scripts)
@@ -204,7 +209,7 @@ export function assertAssetCeilingFitsShell(routeCount, imageCount, shellMaxAsse
 async function buildIntoScratch() {
   const scratch = await mkdtemp(join(tmpdir(), 'orca-mobile-web-app-verify-'))
   try {
-    return await buildMobileWebAppBundle({ outDir: join(scratch, 'mobile-web-app') })
+    return await buildMobileWebAppBundle({ outDir: join(scratch, 'mobile-web') })
   } finally {
     await rm(scratch, { recursive: true, force: true })
   }
