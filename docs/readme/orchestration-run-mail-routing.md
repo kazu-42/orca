@@ -26,7 +26,10 @@ unknown ownership evidence, not proof that a remote coordinator exited. Database
 paths and pane keys remain private.
 
 Local Run send receipts include `delivery.state = queued` and
-`delivery.custody = run_home_mailbox`. Remote worker receipts include
+`delivery.custody = run_home_mailbox`. Messages suppressed by lifecycle
+reconciliation instead return `delivery.state = suppressed` and
+`lifecycle.action = suppressed`, with the same custody. They do not wake mailbox
+waiters or leave unread mail. Remote worker receipts include
 `relay.state = queued`, `relay.custody = worker_relay`, `homeRunId`, and
 `homePeerFingerprint`. These are enqueue snapshots, not proof of coordinator
 consumption, acknowledgment, or task acceptance. A disconnected home leaves the
