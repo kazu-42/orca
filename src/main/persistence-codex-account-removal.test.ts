@@ -82,6 +82,29 @@ describe('Codex account removal persistence', () => {
     })
   })
 
+  it('reloads removal recovery metadata after the normal account record has committed away', async () => {
+    const store = createStore()
+    const account = createPersistedCodexAccount()
+    store.updateSettings({ codexManagedAccounts: [account] })
+    await store.retainCodexAccountRemovalRecoveryAndFlush(account)
+    expect(readDataFile()).toMatchObject({
+      settings: { codexManagedAccounts: [account], codexAccountRemovalRecovery: [account] }
+    })
+    await store.updateCodexAccountSettingsAndResetLedgerAndFlush(
+      {
+        codexManagedAccounts: [],
+        activeCodexManagedAccountId: null,
+        activeCodexManagedAccountIdsByRuntime: { host: null, wsl: {} }
+      },
+      { version: 1, attempts: [] }
+    )
+    const reloaded = createStore()
+    expect(reloaded.getSettings()).toMatchObject({
+      codexManagedAccounts: [],
+      codexAccountRemovalRecovery: [account]
+    })
+  })
+
   it('restores Codex account settings when pre-removal reconciliation fails', async () => {
     const store = createStore()
     const account = createPersistedCodexAccount()

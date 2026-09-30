@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { existsSync } from 'node:fs'
+import { ProfileStateWriterError } from '../persistence/profile-state/profile-state-writer-errors'
 import {
   createManagedHome,
   failNextAccountRemovalPersistence,
@@ -27,6 +28,65 @@ vi.mock('node:os', async () => {
 
 describe('Codex account removal durability', () => {
   registerCodexAccountsTestHomes()
+
+  it('keeps a removal target discoverable after a committed write loses its acknowledgement', async () => {
+    const managedHomePath = createManagedHome(testState.userDataDir, 'account-1')
+    const store = createStore(
+      createSettings({
+        codexManagedAccounts: [
+          {
+            id: 'account-1',
+            email: 'user@example.com',
+            managedHomePath,
+            managedHomeRuntime: 'host',
+            wslDistro: null,
+            createdAt: 1,
+            updatedAt: 1,
+            lastAuthenticatedAt: 1
+          }
+        ],
+        activeCodexManagedAccountId: 'account-1'
+      })
+    )
+    const persist = store.updateCodexAccountSettingsAndResetLedgerAndFlush.getMockImplementation()!
+    store.updateCodexAccountSettingsAndResetLedgerAndFlush.mockImplementationOnce(
+      async (updates, next) => {
+        await persist(updates, next)
+        throw new ProfileStateWriterError(
+          'test-worker-exit',
+          'acknowledgement lost',
+          'indeterminate'
+        )
+      }
+    )
+    const { CodexAccountService } = await import('./service')
+    const service = new CodexAccountService(
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Fixture implements removal's Store operations.
+      store as never,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Fixture supplies removal's refresh and eviction methods.
+      createRateLimits() as never,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Fixture supplies runtime reconciliation used by removal.
+      createRuntimeHome() as never
+    )
+    await expect(service.removeAccount('account-1')).rejects.toThrow('acknowledgement lost')
+    expect(existsSync(managedHomePath)).toBe(true)
+    expect(service.listAccounts().accounts).toMatchObject([
+      { id: 'account-1', removalPending: true }
+    ])
+
+    const reloaded = createStore(structuredClone(store.getSettings()))
+    const recovered = new CodexAccountService(
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Reloaded fixture implements removal's Store operations.
+      reloaded as never,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Fixture supplies removal's refresh and eviction methods.
+      createRateLimits() as never,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Fixture supplies runtime reconciliation used by removal.
+      createRuntimeHome() as never
+    )
+    await expect(recovered.selectAccount('account-1')).rejects.toThrow('no longer exists')
+    await expect(recovered.removeAccount('account-1')).resolves.toMatchObject({ accounts: [] })
+    expect(existsSync(managedHomePath)).toBe(false)
+  })
 
   it('keeps managed credentials until asynchronous account and ledger persistence acknowledges', async () => {
     const managedHomePath = createManagedHome(testState.userDataDir, 'account-1')

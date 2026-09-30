@@ -1,4 +1,6 @@
 import type { GlobalSettings } from '../../../shared/global-settings-types'
+import type { CodexManagedAccount } from '../../../shared/managed-account-types'
+import { persistCodexAccountRemovalRecovery } from './codex-account-removal-recovery'
 import {
   parseCodexResetCreditAttemptLedger,
   type CodexResetCreditAttemptLedger
@@ -91,6 +93,18 @@ export class ProfilePreferences {
 
   updateCodexAccountSettingsAndFlush(updates: CodexAccountSettingsUpdate): Promise<void> {
     return updateCodexAccountStateAndFlush(this, updates)
+  }
+
+  retainCodexAccountRemovalRecoveryAndFlush(account: CodexManagedAccount): Promise<void> {
+    return persistCodexAccountRemovalRecovery(
+      this[profilePreferencesContext].runtime,
+      account.id,
+      account
+    )
+  }
+
+  clearCodexAccountRemovalRecoveryAndFlush(accountId: string): Promise<void> {
+    return persistCodexAccountRemovalRecovery(this[profilePreferencesContext].runtime, accountId)
   }
 
   withCodexAccountSettingsPreview<T>(updates: CodexAccountSettingsUpdate, action: () => T): T {

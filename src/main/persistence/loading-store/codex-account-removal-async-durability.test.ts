@@ -48,6 +48,47 @@ async function seededAccount() {
 }
 
 describe('asynchronous Codex account removal', () => {
+  it('retains durable recovery metadata when the removal commits but loses its acknowledgement', async () => {
+    const { store, authority, readState } = await seededAccount()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const account = store.getSettings().codexManagedAccounts[0]
+    await store.retainCodexAccountRemovalRecoveryAndFlush(account)
+    const gate = authority.pause()
+    const rejected = expect(
+      store.updateCodexAccountSettingsAndResetLedgerAndFlush(removedSettings, {
+        version: 1,
+        attempts: []
+      })
+    ).rejects.toMatchObject({ outcome: 'indeterminate' })
+    await gate.started.promise
+    const captured = authority.captures.at(-1)
+    if (!captured) {
+      throw new Error('Expected captured removal domains')
+    }
+    authority.inner.writeSerializedDomains(captured)
+    gate.finish.reject(
+      new ProfileStateWriterError('test-worker-exit', 'acknowledgement lost', 'indeterminate')
+    )
+    await rejected
+    expect(readState()).toMatchObject({
+      settings: { codexManagedAccounts: [], codexAccountRemovalRecovery: [account] },
+      codexResetCreditAttemptLedger: { attempts: [] }
+    })
+  })
+
+  it('keeps the account and reset guards when recovery metadata cannot reach storage', async () => {
+    const { store, authority, readState } = await seededAccount()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const account = store.getSettings().codexManagedAccounts[0]
+    authority.failNextWrite()
+    await expect(store.retainCodexAccountRemovalRecoveryAndFlush(account)).rejects.toThrow(
+      'profile_state_write_failed'
+    )
+    expect(store.getSettings().codexManagedAccounts).toEqual([account])
+    expect(readState().settings.codexManagedAccounts).toEqual([account])
+    expect(readState().codexResetCreditAttemptLedger.attempts).toHaveLength(1)
+  })
+
   it('acknowledges and publishes only after account settings and reset guards commit together', async () => {
     const { store, authority, readState } = await seededAccount()
     const changed = vi.fn()

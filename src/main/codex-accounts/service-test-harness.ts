@@ -91,6 +91,25 @@ export function createStore(settings: GlobalSettings) {
   return {
     getSettings: vi.fn(() => settings),
     updateSettings: vi.fn(updateSettings),
+    retainCodexAccountRemovalRecoveryAndFlush: vi.fn(
+      async (account: GlobalSettings['codexManagedAccounts'][number]) => {
+        updateSettings({
+          codexAccountRemovalRecovery: [
+            ...(settings.codexAccountRemovalRecovery ?? []).filter(
+              (entry) => entry.id !== account.id
+            ),
+            structuredClone(account)
+          ]
+        })
+      }
+    ),
+    clearCodexAccountRemovalRecoveryAndFlush: vi.fn(async (accountId: string) => {
+      updateSettings({
+        codexAccountRemovalRecovery: (settings.codexAccountRemovalRecovery ?? []).filter(
+          (entry) => entry.id !== accountId
+        )
+      })
+    }),
     updateCodexAccountSettingsAndFlush: vi.fn(async (updates: Partial<GlobalSettings>) => {
       updateSettings(updates)
     }),
