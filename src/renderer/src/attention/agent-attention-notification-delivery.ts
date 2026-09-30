@@ -26,7 +26,7 @@ export function deliverAgentAttentionNotification(
   sound: AgentAttentionNotificationSound
 ): void {
   if (request.source === 'agent-task-complete' && request.workspaceOrigin === undefined) {
-    const notifications = useAppStore.getState().settings.notifications ?? {}
+    const notifications = useAppStore.getState().settings?.notifications ?? {}
     // Unknown ownership is safe only when every possible origin permits delivery.
     if (
       !allowsWorkspaceAgentNotification(notifications, 'cli', request.agentState) ||

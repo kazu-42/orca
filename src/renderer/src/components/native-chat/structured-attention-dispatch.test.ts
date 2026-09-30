@@ -275,12 +275,16 @@ describe('dispatchStructuredTurnCompletionAttention', () => {
   })
 
   it('keeps unread indicators but withholds completion delivery before catalog hydration', () => {
+    const settings = store.getState().settings
+    if (!settings) {
+      throw new Error('Expected seeded notification settings')
+    }
     store.setState({
       worktreesByRepo: {},
       settings: {
-        ...store.getState().settings,
+        ...settings,
         notifications: {
-          ...store.getState().settings.notifications,
+          ...settings.notifications,
           cliWorktreeTaskComplete: false,
           automationWorktreeTaskComplete: false
         }
