@@ -29,6 +29,42 @@ function stateWithWorkspace() {
 }
 
 describe('notification workspace labels', () => {
+  it.each(['cli', 'automation'] as const)(
+    'classifies %s-created folder repositories through their persisted worktree metadata',
+    (origin) => {
+      const state = stateWithWorkspace()
+      const repo = { ...state.repos[0], workspaceType: 'folder' as const }
+      const id = `${repo.id}::${repo.path}::workspace:folder-instance`
+      state.repos = [repo]
+      state.worktreesByRepo.repo = [
+        makeWorktree({
+          id,
+          repoId: repo.id,
+          path: repo.path,
+          orcaCreationSource: 'desktop',
+          ...(origin === 'cli'
+            ? { cliProvenance: { kind: 'created-by-cli' as const, createdAt: 1 } }
+            : {
+                automationProvenance: {
+                  kind: 'created-by-automation' as const,
+                  automationId: 'automation-1',
+                  automationNameSnapshot: 'Daily',
+                  automationRunId: 'run-1',
+                  automationRunTitleSnapshot: 'Daily run',
+                  createdAt: 1,
+                  executionTargetType: 'local' as const,
+                  executionTargetId: 'repo',
+                  projectId: 'project'
+                }
+              })
+        })
+      ]
+      for (const workspaceId of [id, `worktree:${id}`]) {
+        expect(getNotificationWorkspaceLabels(state, workspaceId).workspaceOrigin).toBe(origin)
+      }
+    }
+  )
+
   it.each(['local', 'ssh:server', 'runtime:server'] as const)(
     'carries provenance for worktrees on %s',
     (hostId) => {
@@ -244,7 +280,6 @@ describe('notification workspace labels', () => {
     )
     expect(getNotificationWorkspaceLabels(state, 'folder:duplicate', 'Terminal')).toEqual({
       repoLabel: undefined,
-      workspaceOrigin: 'other',
       worktreeLabel: 'Terminal'
     })
   })
@@ -354,12 +389,12 @@ describe('notification workspace labels', () => {
       const state = stateWithWorkspace()
       expect(getNotificationWorkspaceLabels(state, id, 'My terminal')).toEqual({
         repoLabel: undefined,
-        ...(id === 'missing-worktree' ? {} : { workspaceOrigin: 'other' }),
+        ...(id === FLOATING_TERMINAL_WORKTREE_ID ? { workspaceOrigin: 'other' } : {}),
         worktreeLabel: 'My terminal'
       })
       expect(getNotificationWorkspaceLabels(state, id, '  ')).toEqual({
         repoLabel: undefined,
-        ...(id === 'missing-worktree' ? {} : { workspaceOrigin: 'other' }),
+        ...(id === FLOATING_TERMINAL_WORKTREE_ID ? { workspaceOrigin: 'other' } : {}),
         worktreeLabel: 'workspace'
       })
     }

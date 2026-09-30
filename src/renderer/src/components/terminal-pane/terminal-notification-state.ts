@@ -235,7 +235,7 @@ export function getNotificationWorkspaceLabels(
     return {
       repoLabel: group?.name,
       worktreeLabel: folder?.name || fallback,
-      workspaceOrigin: 'other'
+      ...(folder ? { workspaceOrigin: 'other' as const } : {})
     }
   }
   const worktreeId = scope?.type === 'worktree' ? scope.worktreeId : workspaceId
