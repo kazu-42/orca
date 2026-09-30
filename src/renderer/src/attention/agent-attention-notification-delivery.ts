@@ -12,7 +12,9 @@
  */
 import { playDesktopNotificationSound } from '@/lib/desktop-notification-sound'
 import { showBlockedNotificationFallbackToast } from '@/lib/blocked-notification-fallback'
+import { useAppStore } from '@/store'
 import type { NotificationDispatchRequest } from '../../../shared/notification-settings-types'
+import { allowsWorkspaceAgentNotification } from '../../../shared/workspace-notification-policy'
 
 export type AgentAttentionNotificationSound = {
   customSoundId: string
@@ -23,13 +25,15 @@ export function deliverAgentAttentionNotification(
   request: NotificationDispatchRequest,
   sound: AgentAttentionNotificationSound
 ): void {
-  // Unresolved ownership must not bypass origin mutes; unread markers are already applied.
-  if (
-    request.source === 'agent-task-complete' &&
-    request.workspaceOrigin === undefined &&
-    (request.agentState === undefined || request.agentState === 'done')
-  ) {
-    return
+  if (request.source === 'agent-task-complete' && request.workspaceOrigin === undefined) {
+    const notifications = useAppStore.getState().settings.notifications ?? {}
+    // Unknown ownership is safe only when every possible origin permits delivery.
+    if (
+      !allowsWorkspaceAgentNotification(notifications, 'cli', request.agentState) ||
+      !allowsWorkspaceAgentNotification(notifications, 'automation', request.agentState)
+    ) {
+      return
+    }
   }
   void window.api.notifications
     .dispatch(request)

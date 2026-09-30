@@ -275,7 +275,17 @@ describe('dispatchStructuredTurnCompletionAttention', () => {
   })
 
   it('keeps unread indicators but withholds completion delivery before catalog hydration', () => {
-    store.setState({ worktreesByRepo: {} })
+    store.setState({
+      worktreesByRepo: {},
+      settings: {
+        ...store.getState().settings,
+        notifications: {
+          ...store.getState().settings.notifications,
+          cliWorktreeTaskComplete: false,
+          automationWorktreeTaskComplete: false
+        }
+      }
+    })
     dispatchStructuredTurnCompletionAttention(structuredTab(), completion())
     expect(indicators()).toMatchObject({
       paneDot: 'agent-completion',
@@ -283,6 +293,12 @@ describe('dispatchStructuredTurnCompletionAttention', () => {
       surfaceDot: 'agent-completion'
     })
     expect(dispatched).toEqual([])
+  })
+
+  it('delivers an unresolved completion when both origin switches remain enabled', () => {
+    store.setState({ worktreesByRepo: {} })
+    dispatchStructuredTurnCompletionAttention(structuredTab(), completion())
+    expect(onlyDispatch()).toMatchObject({ agentState: 'done' })
   })
 
   it('still delivers an input request before catalog hydration', () => {

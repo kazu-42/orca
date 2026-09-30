@@ -58,13 +58,20 @@ it.each(['cli', 'automation'] as const)(
   }
 )
 
-it.each(['missing', 'ambiguous'] as const)(
-  'keeps unread markers without dispatching a completion with %s ownership',
-  (ownership) => {
+it.each([
+  ['missing', false, false],
+  ['missing', false, true],
+  ['missing', true, false],
+  ['ambiguous', false, false],
+  ['ambiguous', false, true],
+  ['ambiguous', true, false]
+] as const)(
+  'keeps unread markers without dispatching with %s ownership (CLI: %s, automation: %s)',
+  (ownership, cliWorktreeTaskComplete, automationWorktreeTaskComplete) => {
     const state = resetNotificationDispatchMockState()
     state.settings.notifications = {
-      cliWorktreeTaskComplete: false,
-      automationWorktreeTaskComplete: false
+      cliWorktreeTaskComplete,
+      automationWorktreeTaskComplete
     }
     if (ownership === 'missing') {
       state.worktreesByRepo = {}
@@ -89,6 +96,34 @@ it.each(['missing', 'ambiguous'] as const)(
   }
 )
 
+it.each(['missing', 'ambiguous'] as const)(
+  'dispatches an unresolved completion with %s ownership when neither origin is muted',
+  (ownership) => {
+    const state = resetNotificationDispatchMockState()
+    state.settings.notifications = {
+      cliWorktreeTaskComplete: true,
+      automationWorktreeTaskComplete: true
+    }
+    if (ownership === 'missing') {
+      state.worktreesByRepo = {}
+    } else {
+      state.worktreesByRepo.repo1[0].hostId = 'local'
+      state.worktreesByRepo.repo1.push({
+        ...state.worktreesByRepo.repo1[0],
+        hostId: 'ssh:server'
+      })
+    }
+    dispatchTerminalNotification('wt-primary', {
+      source: 'agent-task-complete',
+      terminalTitle: 'codex',
+      paneKey: PANE_KEY
+    })
+    expect(window.api.notifications.dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'agent-task-complete', agentState: 'done' })
+    )
+  }
+)
+
 it('dispatches a known ordinary workspace even when both origin preferences are muted', () => {
   const state = resetNotificationDispatchMockState()
   state.settings.notifications = {
@@ -108,6 +143,10 @@ it('dispatches a known ordinary workspace even when both origin preferences are 
 it('preserves input-needed delivery before workspace hydration', () => {
   const state = resetNotificationDispatchMockState()
   state.worktreesByRepo = {}
+  state.settings.notifications = {
+    cliWorktreeTaskComplete: false,
+    automationWorktreeTaskComplete: false
+  }
   state.agentStatusByPaneKey[PANE_KEY] = makeAgentStatus(PANE_KEY, { state: 'blocked' })
   dispatchTerminalNotification('wt-primary', {
     source: 'agent-task-complete',
