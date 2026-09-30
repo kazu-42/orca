@@ -274,6 +274,24 @@ describe('dispatchStructuredTurnCompletionAttention', () => {
     expect(onlyDispatch()).toMatchObject({ agentState: 'done' })
   })
 
+  it('keeps unread indicators but withholds completion delivery before catalog hydration', () => {
+    store.setState({ worktreesByRepo: {} })
+    dispatchStructuredTurnCompletionAttention(structuredTab(), completion())
+    expect(indicators()).toMatchObject({
+      paneDot: 'agent-completion',
+      tabDot: 'agent-completion',
+      surfaceDot: 'agent-completion'
+    })
+    expect(dispatched).toEqual([])
+  })
+
+  it('still delivers an input request before catalog hydration', () => {
+    store.setState({ worktreesByRepo: {} })
+    dispatchStructuredTurnCompletionAttention(structuredTab(), completion({ awaitingUser: true }))
+    expect(indicators().paneDot).toBe('agent-completion')
+    expect(onlyDispatch()).toMatchObject({ agentState: 'blocked' })
+  })
+
   it('says done even while the status row still reads working, because the host settled the turn', () => {
     // The completion can outrun the status re-projection. Sending the row's own state would make
     // main word a finished turn as "working" (notification-options.ts), which is the whole reason

@@ -65,10 +65,12 @@ describe('notification workspace labels', () => {
     })
     expect(getNotificationWorkspaceLabels(state, 'wt')).toEqual({
       repoLabel: 'Orca',
+      workspaceOrigin: 'other',
       worktreeLabel: 'Feature'
     })
     expect(getNotificationWorkspaceLabels(state, 'worktree:wt')).toEqual({
       repoLabel: 'Orca',
+      workspaceOrigin: 'other',
       worktreeLabel: 'Feature'
     })
   })
@@ -85,6 +87,7 @@ describe('notification workspace labels', () => {
     ]
     expect(getNotificationWorkspaceLabels(state, 'remote')).toEqual({
       repoLabel: 'Orca',
+      workspaceOrigin: 'other',
       worktreeLabel: 'Remote feature'
     })
   })
@@ -118,11 +121,13 @@ describe('notification workspace labels', () => {
       ]
       expect(getNotificationWorkspaceLabels(state, 'folder:folder-id')).toEqual({
         repoLabel: 'Personal',
+        workspaceOrigin: 'other',
         worktreeLabel: 'Website'
       })
       state.projectGroups = []
       expect(getNotificationWorkspaceLabels(state, 'folder:folder-id')).toEqual({
         repoLabel: undefined,
+        workspaceOrigin: 'other',
         worktreeLabel: 'Website'
       })
     }
@@ -155,6 +160,7 @@ describe('notification workspace labels', () => {
       }))
       expect(getNotificationWorkspaceLabels(state, 'folder:remote-folder')).toEqual({
         repoLabel: 'Remote group',
+        workspaceOrigin: 'other',
         worktreeLabel: 'Remote folder'
       })
     }
@@ -203,6 +209,7 @@ describe('notification workspace labels', () => {
     }
     expect(getNotificationWorkspaceLabels(state, 'dup::/laptop/dup', 'Terminal')).toEqual({
       repoLabel: 'Dup Local',
+      workspaceOrigin: 'other',
       worktreeLabel: 'Laptop main'
     })
   })
@@ -225,6 +232,7 @@ describe('notification workspace labels', () => {
     // Last-wins on the bare id would answer "Dup Remote" for this local row.
     expect(getNotificationWorkspaceLabels(state, 'dup::/laptop/dup', 'Terminal')).toEqual({
       repoLabel: undefined,
+      workspaceOrigin: 'other',
       worktreeLabel: 'Laptop main'
     })
   })
@@ -236,6 +244,7 @@ describe('notification workspace labels', () => {
     )
     expect(getNotificationWorkspaceLabels(state, 'folder:duplicate', 'Terminal')).toEqual({
       repoLabel: undefined,
+      workspaceOrigin: 'other',
       worktreeLabel: 'Terminal'
     })
   })
@@ -301,6 +310,7 @@ describe('notification workspace labels', () => {
         state.activeWorkspaceExecutionHostId = hostId
         expect(getNotificationWorkspaceLabels(state, COLLIDING_ID, 'Terminal')).toEqual({
           repoLabel: HOSTS[hostId].repo.displayName,
+          workspaceOrigin: 'other',
           worktreeLabel: HOSTS[hostId].row.displayName
         })
       }
@@ -319,7 +329,7 @@ describe('notification workspace labels', () => {
         state.activeWorktreeId = COLLIDING_ID
         state.activeWorkspaceExecutionHostId = hostId
         expect(getNotificationWorkspaceLabels(state, COLLIDING_ID).workspaceOrigin).toBe(
-          hostId === 'ssh:build-box' ? 'cli' : undefined
+          hostId === 'ssh:build-box' ? 'cli' : 'other'
         )
       }
     )
@@ -344,10 +354,12 @@ describe('notification workspace labels', () => {
       const state = stateWithWorkspace()
       expect(getNotificationWorkspaceLabels(state, id, 'My terminal')).toEqual({
         repoLabel: undefined,
+        ...(id === 'missing-worktree' ? {} : { workspaceOrigin: 'other' }),
         worktreeLabel: 'My terminal'
       })
       expect(getNotificationWorkspaceLabels(state, id, '  ')).toEqual({
         repoLabel: undefined,
+        ...(id === 'missing-worktree' ? {} : { workspaceOrigin: 'other' }),
         worktreeLabel: 'workspace'
       })
     }

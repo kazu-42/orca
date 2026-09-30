@@ -14,6 +14,7 @@ import {
   resolveIndexedRepoOwner
 } from '@/lib/worktree-runtime-owner-index'
 import type { ExecutionHostId } from '../../../../shared/execution-host'
+import { FLOATING_TERMINAL_WORKTREE_ID } from '../../../../shared/constants'
 import type { Repo } from '../../../../shared/repo-types'
 import type { Worktree } from '../../../../shared/worktree/types'
 import { parseWorkspaceKey } from '../../../../shared/workspace-scope'
@@ -231,17 +232,26 @@ export function getNotificationWorkspaceLabels(
         folder.projectGroupId,
         getCatalogOwnerHostId(folder)
       )
-    return { repoLabel: group?.name, worktreeLabel: folder?.name || fallback }
+    return {
+      repoLabel: group?.name,
+      worktreeLabel: folder?.name || fallback,
+      workspaceOrigin: 'other'
+    }
   }
   const worktreeId = scope?.type === 'worktree' ? scope.worktreeId : workspaceId
   const { worktree, hostId } = findWorktreeRowOnItsOwnHost(state, worktreeId)
   const repo = worktree
     ? findNotificationRepo(state, worktreeId, worktree.repoId, hostId)
     : undefined
-  const workspaceOrigin = getWorkspaceNotificationOrigin(worktree)
+  const workspaceOrigin =
+    worktreeId === FLOATING_TERMINAL_WORKTREE_ID
+      ? 'other'
+      : worktree
+        ? getWorkspaceNotificationOrigin(worktree)
+        : undefined
   return {
     repoLabel: repo?.displayName,
-    ...(workspaceOrigin !== 'other' ? { workspaceOrigin } : {}),
+    ...(workspaceOrigin !== undefined ? { workspaceOrigin } : {}),
     worktreeLabel: worktree?.displayName || worktree?.branch || fallback
   }
 }

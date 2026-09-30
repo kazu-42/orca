@@ -23,6 +23,14 @@ export function deliverAgentAttentionNotification(
   request: NotificationDispatchRequest,
   sound: AgentAttentionNotificationSound
 ): void {
+  // Unresolved ownership must not bypass origin mutes; unread markers are already applied.
+  if (
+    request.source === 'agent-task-complete' &&
+    request.workspaceOrigin === undefined &&
+    (request.agentState === undefined || request.agentState === 'done')
+  ) {
+    return
+  }
   void window.api.notifications
     .dispatch(request)
     .then((result) => {

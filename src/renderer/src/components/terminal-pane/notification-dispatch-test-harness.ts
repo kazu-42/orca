@@ -2,6 +2,7 @@ import { vi } from 'vitest'
 import type { Mock } from 'vitest'
 import type { AgentStatusEntry } from '../../../../shared/agent-status-types'
 import type { TerminalLayoutSnapshot } from '../../../../shared/terminal-tab-types'
+import type { ExecutionHostId } from '../../../../shared/execution-host'
 import type {
   CliWorkspaceProvenance,
   AutomationWorkspaceProvenance
@@ -30,6 +31,7 @@ export type NotificationDispatchMockState = {
     {
       id: string
       repoId: string
+      hostId?: ExecutionHostId
       displayName?: string
       branch?: string
       workspaceStatus?: string

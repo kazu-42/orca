@@ -1,6 +1,10 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { dispatchTerminalNotification } from './use-notification-dispatch'
-import { PANE_KEY, resetNotificationDispatchMockState } from './notification-dispatch-test-harness'
+import {
+  PANE_KEY,
+  makeAgentStatus,
+  resetNotificationDispatchMockState
+} from './notification-dispatch-test-harness'
 
 vi.mock('@/store', async () => {
   const harness = await import('./notification-dispatch-test-harness')
@@ -53,3 +57,78 @@ it.each(['cli', 'automation'] as const)(
     expect(state.markTerminalPaneUnread).toHaveBeenCalledWith(PANE_KEY, 'agent-completion')
   }
 )
+
+it.each(['missing', 'ambiguous'] as const)(
+  'keeps unread markers without dispatching a completion with %s ownership',
+  (ownership) => {
+    const state = resetNotificationDispatchMockState()
+    state.settings.notifications = {
+      cliWorktreeTaskComplete: false,
+      automationWorktreeTaskComplete: false
+    }
+    if (ownership === 'missing') {
+      state.worktreesByRepo = {}
+    } else {
+      state.worktreesByRepo.repo1[0].hostId = 'local'
+      state.worktreesByRepo.repo1.push({
+        ...state.worktreesByRepo.repo1[0],
+        hostId: 'ssh:server',
+        cliProvenance: { kind: 'created-by-cli', createdAt: 1 }
+      })
+    }
+    dispatchTerminalNotification('wt-primary', {
+      source: 'agent-task-complete',
+      terminalTitle: 'codex',
+      paneKey: PANE_KEY
+    })
+    expect(window.api.notifications.dispatch).not.toHaveBeenCalled()
+    expect(state.markWorktreeUnread).toHaveBeenCalledWith('wt-primary')
+    expect(state.markAgentCompletionPaneUnread).toHaveBeenCalledWith(PANE_KEY, 'agent-completion')
+    expect(state.markTerminalTabUnread).toHaveBeenCalledWith('tab-1', 'agent-completion')
+    expect(state.markTerminalPaneUnread).toHaveBeenCalledWith(PANE_KEY, 'agent-completion')
+  }
+)
+
+it('dispatches a known ordinary workspace even when both origin preferences are muted', () => {
+  const state = resetNotificationDispatchMockState()
+  state.settings.notifications = {
+    cliWorktreeTaskComplete: false,
+    automationWorktreeTaskComplete: false
+  }
+  dispatchTerminalNotification('wt-primary', {
+    source: 'agent-task-complete',
+    terminalTitle: 'codex',
+    paneKey: PANE_KEY
+  })
+  expect(window.api.notifications.dispatch).toHaveBeenCalledWith(
+    expect.objectContaining({ workspaceOrigin: 'other' })
+  )
+})
+
+it('preserves input-needed delivery before workspace hydration', () => {
+  const state = resetNotificationDispatchMockState()
+  state.worktreesByRepo = {}
+  state.agentStatusByPaneKey[PANE_KEY] = makeAgentStatus(PANE_KEY, { state: 'blocked' })
+  dispatchTerminalNotification('wt-primary', {
+    source: 'agent-task-complete',
+    terminalTitle: 'codex',
+    paneKey: PANE_KEY,
+    agentStatusSnapshot: state.agentStatusByPaneKey[PANE_KEY]
+  })
+  expect(window.api.notifications.dispatch).toHaveBeenCalledWith(
+    expect.objectContaining({ agentState: 'blocked' })
+  )
+})
+
+it('preserves terminal bell delivery before workspace hydration', () => {
+  const state = resetNotificationDispatchMockState()
+  state.worktreesByRepo = {}
+  dispatchTerminalNotification('wt-primary', {
+    source: 'terminal-bell',
+    terminalTitle: 'shell',
+    paneKey: PANE_KEY
+  })
+  expect(window.api.notifications.dispatch).toHaveBeenCalledWith(
+    expect.objectContaining({ source: 'terminal-bell' })
+  )
+})
