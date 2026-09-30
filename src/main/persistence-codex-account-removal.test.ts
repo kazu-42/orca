@@ -5,7 +5,14 @@ import { tmpdir } from 'node:os'
 import type { GlobalSettings } from '../shared/global-settings-types'
 import type { CodexResetCreditAttemptLedger } from '../shared/codex-reset-credit-attempt-ledger'
 import { getDefaultPersistedState } from '../shared/constants'
-import { testState, createStore, writeDataFile, readDataFile } from './persistence-test-harness'
+import {
+  testState,
+  createStore,
+  closeTestStores,
+  writeDataFile,
+  readDataFile
+} from './persistence-test-harness'
+import { ProfileStateSqliteAuthority } from './persistence/profile-state/profile-state-sqlite-authority'
 
 function createPersistedCodexAccount(): GlobalSettings['codexManagedAccounts'][number] {
   return {
@@ -42,7 +49,9 @@ describe('Codex account removal persistence', () => {
   beforeEach(() => {
     testState.dir = mkdtempSync(join(tmpdir(), 'orca-account-removal-'))
   })
-  afterEach(() => {
+  afterEach(async () => {
+    vi.restoreAllMocks()
+    await closeTestStores()
     rmSync(testState.dir, { recursive: true, force: true })
   })
 
@@ -54,9 +63,9 @@ describe('Codex account removal persistence', () => {
       activeCodexManagedAccountId: 'account-host',
       activeCodexManagedAccountIdsByRuntime: { host: 'account-host', wsl: {} }
     })
-    store.replaceCodexResetCreditAttemptLedgerAndFlush(createPendingCodexResetLedger())
+    await store.replaceCodexResetCreditAttemptLedgerAndFlush(createPendingCodexResetLedger())
 
-    store.updateCodexAccountSettingsAndResetLedgerAndFlush(
+    await store.updateCodexAccountSettingsAndResetLedgerAndFlush(
       {
         codexManagedAccounts: [],
         activeCodexManagedAccountId: null,
@@ -190,13 +199,16 @@ describe('Codex account removal persistence', () => {
       activeCodexManagedAccountId: 'account-host',
       activeCodexManagedAccountIdsByRuntime: { host: 'account-host', wsl: {} }
     })
-    store.replaceCodexResetCreditAttemptLedgerAndFlush(ledger)
+    await store.replaceCodexResetCreditAttemptLedgerAndFlush(ledger)
     const beforeSettings = structuredClone(store.getSettings())
-    vi.spyOn(store, 'flushOrThrow').mockImplementationOnce(() => {
+    vi.spyOn(
+      ProfileStateSqliteAuthority.prototype,
+      'writeCompleteSerializedDomains'
+    ).mockImplementationOnce(() => {
       throw new Error('disk full')
     })
 
-    expect(() =>
+    await expect(
       store.updateCodexAccountSettingsAndResetLedgerAndFlush(
         {
           codexManagedAccounts: [],
@@ -205,7 +217,7 @@ describe('Codex account removal persistence', () => {
         },
         { version: 1, attempts: [] }
       )
-    ).toThrow('disk full')
+    ).rejects.toThrow('disk full')
 
     expect(store.getSettings()).toEqual(beforeSettings)
     expect(store.getCodexResetCreditAttemptLedger()).toEqual(ledger)
@@ -236,7 +248,7 @@ describe('Codex account removal persistence', () => {
     expect(() => store.getCodexResetCreditAttemptLedger()).toThrow(
       'Codex reset-credit attempt ledger is corrupt'
     )
-    store.updateCodexAccountSettingsAndFlush({
+    await store.updateCodexAccountSettingsAndFlush({
       codexManagedAccounts: [],
       activeCodexManagedAccountId: null,
       activeCodexManagedAccountIdsByRuntime: { host: null, wsl: {} }

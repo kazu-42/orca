@@ -5,7 +5,7 @@ import {
 } from '../../../shared/codex-reset-credit-attempt-ledger'
 import type { OnboardingChecklistState } from '../../../shared/onboarding-state-types'
 import type { PersistedState } from '../../../shared/persisted-state-types'
-import { getDefaultOnboardingState } from '../../../shared/constants'
+import { getDefaultOnboardingState } from '../../../shared/onboarding-defaults'
 import type { FeatureInteractionId } from '../../../shared/feature-interactions'
 import {
   updateSettings as updateSettingsOperation,
@@ -27,7 +27,8 @@ type ProfilePreferencesRuntime = Pick<
   StoreRuntimeState,
   | 'activeViewPreference'
   | 'codexAccountSettingsPreviewActive'
-  | 'flushOrThrow'
+  | 'runDurableMutation'
+  | 'dirtyProfileStateDomains'
   | 'writesFrozen'
   | 'githubCacheDirty'
   | 'githubCacheGeneration'
@@ -88,8 +89,8 @@ export class ProfilePreferences {
     return updateSettingsOperation(getSettingsMutationOperations(this), updates, options)
   }
 
-  updateCodexAccountSettingsAndFlush(updates: CodexAccountSettingsUpdate): void {
-    updateCodexAccountStateAndFlush(this, updates)
+  updateCodexAccountSettingsAndFlush(updates: CodexAccountSettingsUpdate): Promise<void> {
+    return updateCodexAccountStateAndFlush(this, updates)
   }
 
   withCodexAccountSettingsPreview<T>(updates: CodexAccountSettingsUpdate, action: () => T): T {
@@ -125,8 +126,8 @@ export class ProfilePreferences {
   updateCodexAccountSettingsAndResetLedgerAndFlush(
     updates: CodexAccountSettingsUpdate,
     ledger: CodexResetCreditAttemptLedger
-  ): void {
-    updateCodexAccountStateAndFlush(this, updates, ledger)
+  ): Promise<void> {
+    return updateCodexAccountStateAndFlush(this, updates, ledger)
   }
 
   getUI(): PersistedState['ui'] {
@@ -190,27 +191,50 @@ function updateCodexAccountStateAndFlush(
   owner: ProfilePreferences,
   updates: CodexAccountSettingsUpdate,
   ledger?: CodexResetCreditAttemptLedger
-): void {
+): Promise<void> {
   const runtime = owner[profilePreferencesContext].runtime
   if (runtime.writesFrozen) {
     throw new Error('Cannot persist Codex account removal while writes are frozen')
   }
   const nextLedger = ledger ? parseCodexResetCreditAttemptLedger(ledger) : undefined
-  const previousSettings = runtime.state.settings
-  const previousLedger = runtime.state.codexResetCreditAttemptLedger
-    ? structuredClone(runtime.state.codexResetCreditAttemptLedger)
-    : undefined
-  try {
-    owner.updateSettings(updates)
-    if (nextLedger !== undefined) {
-      runtime.state.codexResetCreditAttemptLedger = nextLedger
-    }
-    runtime.flushOrThrow()
-  } catch (error) {
-    runtime.state.settings = previousSettings
-    runtime.state.codexResetCreditAttemptLedger = previousLedger
-    throw error
-  }
+  return runtime
+    .runDurableMutation(() => {
+      const previousSettings = runtime.state.settings
+      const previousLedger = runtime.state.codexResetCreditAttemptLedger
+      const appliedSettings = owner.updateSettings(updates, { notifyListeners: false })
+      if (nextLedger !== undefined) {
+        runtime.state.codexResetCreditAttemptLedger = nextLedger
+        runtime.dirtyProfileStateDomains?.add('codexResetCreditAttemptLedger')
+      }
+      return {
+        value: undefined,
+        rollback: () => {
+          for (const key of [
+            'codexManagedAccounts',
+            'activeCodexManagedAccountId',
+            'activeCodexManagedAccountIdsByRuntime'
+          ] as const) {
+            if (runtime.state.settings[key] === appliedSettings[key]) {
+              // Restore only the removal's fields, preserving later unrelated settings changes.
+              Object.assign(runtime.state.settings, { [key]: previousSettings[key] })
+            }
+          }
+          if (
+            nextLedger !== undefined &&
+            runtime.state.codexResetCreditAttemptLedger === nextLedger
+          ) {
+            runtime.state.codexResetCreditAttemptLedger = previousLedger
+          }
+        }
+      }
+    })
+    .then(() => {
+      try {
+        notifySettingsChanged(owner, updates)
+      } catch (error) {
+        console.error('[persistence] Failed to notify durable Codex account removal:', error)
+      }
+    })
 }
 
 export function notifySettingsChanged(
@@ -241,7 +265,7 @@ export function getSettingsMutationOperations(
     bumpLocalWorktreeScanGeneration,
     removeRetainedBlob: (slot) =>
       owner[profilePreferencesContext].runtime.protectedSecrets.removeRetainedBlob(slot),
-    scheduleSave: () => scheduleSave(owner[profilePreferencesContext].scheduling),
+    scheduleSave: () => scheduleSave(owner[profilePreferencesContext].scheduling, ['settings']),
     notifySettingsChanged: (updates, originWebContentsId) =>
       notifySettingsChanged(owner, updates, originWebContentsId)
   }
@@ -265,7 +289,7 @@ export function getFeatureInteractionOperations(
 ): FeatureInteractionOperations {
   return {
     state: owner[profilePreferencesContext].runtime.state,
-    scheduleSave: () => scheduleSave(owner[profilePreferencesContext].scheduling),
+    scheduleSave: (domains) => scheduleSave(owner[profilePreferencesContext].scheduling, domains),
     notifyUIChanged: () => notifyUIChanged(owner),
     getUI: () => owner.getUI()
   }

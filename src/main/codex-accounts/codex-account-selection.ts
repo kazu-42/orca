@@ -31,7 +31,7 @@ type CodexAccountSelectionDependencies = {
   persistAccountRemoval: (
     accountId: string,
     updates: Parameters<Store['updateCodexAccountSettingsAndFlush']>[0]
-  ) => void
+  ) => Promise<void>
 }
 
 export class CodexAccountSelection {
@@ -83,7 +83,7 @@ export class CodexAccountSelection {
       this.dependencies.store.withCodexAccountSettingsPreview(settingsUpdate, () => {
         this.dependencies.runtimeHome.syncForCurrentSelection(accountTarget)
       })
-      this.dependencies.persistAccountRemoval(accountId, settingsUpdate)
+      await this.dependencies.persistAccountRemoval(accountId, settingsUpdate)
     } catch (error) {
       try {
         this.dependencies.runtimeHome.syncForCurrentSelection(accountTarget)

@@ -331,7 +331,7 @@ describe('CodexAccountService config sync', () => {
       limits
     })!
     const store = createStore(settings)
-    store.replaceCodexResetCreditAttemptLedgerAndFlush({
+    await store.replaceCodexResetCreditAttemptLedgerAndFlush({
       version: 1,
       attempts: [
         {
@@ -381,7 +381,7 @@ describe('CodexAccountService config sync', () => {
       limits
     })!
     const store = createStore(settings)
-    store.replaceCodexResetCreditAttemptLedgerAndFlush({
+    await store.replaceCodexResetCreditAttemptLedgerAndFlush({
       version: 1,
       attempts: [
         {
@@ -440,7 +440,7 @@ describe('CodexAccountService config sync', () => {
       limits
     })!
     const store = createStore(settings)
-    store.replaceCodexResetCreditAttemptLedgerAndFlush({
+    await store.replaceCodexResetCreditAttemptLedgerAndFlush({
       version: 1,
       attempts: [
         {

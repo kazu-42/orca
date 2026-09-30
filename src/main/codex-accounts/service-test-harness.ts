@@ -91,14 +91,18 @@ export function createStore(settings: GlobalSettings) {
   return {
     getSettings: vi.fn(() => settings),
     updateSettings: vi.fn(updateSettings),
-    updateCodexAccountSettingsAndFlush: vi.fn(updateSettings),
+    updateCodexAccountSettingsAndFlush: vi.fn(async (updates: Partial<GlobalSettings>) => {
+      updateSettings(updates)
+    }),
     withCodexAccountSettingsPreview: withSettingsPreview,
     getCodexResetCreditAttemptLedger: vi.fn(() => structuredClone(resetLedger)),
-    replaceCodexResetCreditAttemptLedgerAndFlush: vi.fn((next: CodexResetCreditAttemptLedger) => {
-      resetLedger = structuredClone(next)
-    }),
+    replaceCodexResetCreditAttemptLedgerAndFlush: vi.fn(
+      async (next: CodexResetCreditAttemptLedger) => {
+        resetLedger = structuredClone(next)
+      }
+    ),
     updateCodexAccountSettingsAndResetLedgerAndFlush: vi.fn(
-      (updates: Partial<GlobalSettings>, next: CodexResetCreditAttemptLedger) => {
+      async (updates: Partial<GlobalSettings>, next: CodexResetCreditAttemptLedger) => {
         updateSettings(updates)
         resetLedger = structuredClone(next)
       }

@@ -28,6 +28,54 @@ vi.mock('node:os', async () => {
 describe('Codex account removal durability', () => {
   registerCodexAccountsTestHomes()
 
+  it('keeps managed credentials until asynchronous account and ledger persistence acknowledges', async () => {
+    const managedHomePath = createManagedHome(testState.userDataDir, 'account-1')
+    const store = createStore(
+      createSettings({
+        codexManagedAccounts: [
+          {
+            id: 'account-1',
+            email: 'user@example.com',
+            managedHomePath,
+            managedHomeRuntime: 'host',
+            wslDistro: null,
+            createdAt: 1,
+            updatedAt: 1,
+            lastAuthenticatedAt: 1
+          }
+        ],
+        activeCodexManagedAccountId: 'account-1'
+      })
+    )
+    const started = Promise.withResolvers<void>()
+    const gate = Promise.withResolvers<void>()
+    const persist = store.updateCodexAccountSettingsAndResetLedgerAndFlush.getMockImplementation()!
+    store.updateCodexAccountSettingsAndResetLedgerAndFlush.mockImplementationOnce(
+      async (updates, next) => {
+        started.resolve()
+        await gate.promise
+        await persist(updates, next)
+      }
+    )
+    const rateLimits = createRateLimits()
+    const { CodexAccountService } = await import('./service')
+    const service = new CodexAccountService(
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Fixture implements removal's Store operations.
+      store as never,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Fixture supplies removal's refresh and eviction methods.
+      rateLimits as never,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Fixture supplies runtime reconciliation used by removal.
+      createRuntimeHome() as never
+    )
+    const removing = service.removeAccount('account-1')
+    await started.promise
+    expect(existsSync(managedHomePath)).toBe(true)
+    expect(rateLimits.evictInactiveCodexCache).not.toHaveBeenCalled()
+    gate.resolve()
+    await expect(removing).resolves.toMatchObject({ accounts: [] })
+    expect(existsSync(managedHomePath)).toBe(false)
+  })
+
   it('keeps account removal retryable when runtime reconciliation fails', async () => {
     const managedHomePath = createManagedHome(testState.userDataDir, 'account-1')
     const settings = createSettings({

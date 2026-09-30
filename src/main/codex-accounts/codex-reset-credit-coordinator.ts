@@ -174,8 +174,8 @@ export class CodexResetCreditCoordinator {
   persistAccountRemoval(
     accountId: string,
     updates: Parameters<Store['updateCodexAccountSettingsAndFlush']>[0]
-  ): void {
-    this.ledger.persistAccountRemoval(accountId, updates)
+  ): Promise<void> {
+    return this.ledger.persistAccountRemoval(accountId, updates)
   }
 
   private startAttempt(
@@ -185,6 +185,9 @@ export class CodexResetCreditCoordinator {
   ): Promise<CodexResetCreditConsumeResult> {
     const promise = this.dependencies.serializeMutation(
       async (): Promise<CodexResetCreditConsumeResult> => {
+        if (this.ledger.error) {
+          throw this.ledger.error
+        }
         const isFresh = attempt.state === 'fresh'
         let validation: { managedHomePath: string; rateLimits: RateLimitState }
         try {
@@ -207,7 +210,7 @@ export class CodexResetCreditCoordinator {
           throw error
         }
         if (isFresh) {
-          this.ledger.markProviderPending(idempotencyKey, attempt)
+          await this.ledger.markProviderPending(idempotencyKey, attempt)
         }
         const { outcome, state } =
           await this.dependencies.rateLimits.consumeCodexRateLimitResetCredit({
@@ -223,7 +226,7 @@ export class CodexResetCreditCoordinator {
           codex: this.dependencies.getSnapshot(),
           rateLimits: state
         }
-        this.ledger.markSettled(idempotencyKey, attempt, outcome)
+        await this.ledger.markSettled(idempotencyKey, attempt, outcome)
         return result
       }
     )
