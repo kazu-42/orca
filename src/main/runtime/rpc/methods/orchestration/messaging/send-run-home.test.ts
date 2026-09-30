@@ -84,6 +84,11 @@ describe('Run-home message routing', () => {
     const { db, ctx } = worker.setup(false)
     db.db.prepare(`INSERT INTO runs (id, objective) VALUES ('run_orphan', 'orphan')`).run()
     await expect(
+      worker.call('orchestration.runShow', { id: 'run_orphan' }, ctx)
+    ).resolves.toMatchObject({
+      routing: { home: 'unresolved', coordinatorHandle: null, consumerGeneration: 0 }
+    })
+    await expect(
       worker.call(
         'orchestration.send',
         {
@@ -95,7 +100,7 @@ describe('Run-home message routing', () => {
       )
     ).rejects.toMatchObject({
       code: 'run_destination_unresolved',
-      data: { effectsApplied: false }
+      data: { effectsApplied: false, routing: { home: 'unresolved' } }
     })
     expect(db.getInbox(100)).toEqual([])
   })

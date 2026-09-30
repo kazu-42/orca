@@ -15,10 +15,13 @@ export function readRunMailboxHome(db: OrchestrationDb, run: RunRow, runtimeId: 
             .all(run.id)
         ).map((row) => row.home_peer_fingerprint)
       : []
+  // Past bindings and legacy adoption prove ownership even while the coordinator is offline.
+  const hasLocalOwner =
+    run.consumer_generation > 0 || db.getLegacyAdoptedRunMailboxOwner()?.runId === run.id
   const home =
     run.home_database === 'remote'
       ? 'remote'
-      : run.home_database === 'this_database'
+      : run.home_database === 'this_database' && hasLocalOwner
         ? 'local'
         : 'unresolved'
   return {
@@ -46,12 +49,7 @@ export function assertLocalRunMailbox(db: OrchestrationDb, runId: string, runtim
       { effectsApplied: false, routing }
     )
   }
-  // A past local binding survives coordinator absence; a never-bound stub does not prove ownership.
-  const adoptedOwner = run.consumer_generation === 0 ? db.getLegacyAdoptedRunMailboxOwner() : null
-  if (
-    routing.home !== 'local' ||
-    (run.consumer_generation === 0 && adoptedOwner?.runId !== run.id)
-  ) {
+  if (routing.home !== 'local') {
     throw new OrchestrationError(
       'run_destination_unresolved',
       `Run ${runId} has no proven local mailbox owner. Inspect run-show on the intended home runtime; no message was queued.`,

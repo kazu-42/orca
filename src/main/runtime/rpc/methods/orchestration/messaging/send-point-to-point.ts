@@ -53,8 +53,8 @@ export function sendPointToPointMessage(args: {
   const delivery = to.startsWith('run:')
     ? assertLocalRunMailbox(db, to.slice('run:'.length), runtime.getRuntimeId())
     : undefined
-  const withDelivery: SendReceipt = (receipt) =>
-    withSendWarnings(delivery ? { ...receipt, delivery } : receipt)
+  const withDelivery = <T extends object>(receipt: T, state: 'queued' | 'suppressed' = 'queued') =>
+    withSendWarnings(delivery ? { ...receipt, delivery: { ...delivery, state } } : receipt)
   const messageType = (params.type ?? 'status') as MessageType
   const processIncarnation = isDispatchMutationMessageType(messageType)
     ? resolveProcessIncarnation()
@@ -118,7 +118,10 @@ export function sendPointToPointMessage(args: {
       if (reconciled.action === 'suppressed') {
         return recordReceiptForPostCommitNudge(
           recordMutationReceipt,
-          withDelivery({ message: exposeMessage(msg) }),
+          withDelivery(
+            { message: exposeMessage(db.getMessageById(msg.id) ?? msg), lifecycle: reconciled },
+            'suppressed'
+          ),
           () => undefined
         )
       }
