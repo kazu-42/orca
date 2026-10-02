@@ -102,7 +102,7 @@ export function createRunHomePair(protocolVersion: number, legacyHome = false) {
       payloadHash: 'attach'
     }
   })
-  const capability = workerDb.prepareRemoteAttachmentAuthority({
+  workerDb.prepareRemoteAttachmentAuthority({
     dispatchId: dispatch.id,
     paneKey: workerPane,
     processIncarnation: 'worker:pty:1',
@@ -116,7 +116,7 @@ export function createRunHomePair(protocolVersion: number, legacyHome = false) {
   function send(
     requestId: string,
     overrides: Record<string, unknown> = {},
-    token: string | null = capability
+    token: string | null = null
   ) {
     return workerDispatcher.dispatch({
       id: requestId,

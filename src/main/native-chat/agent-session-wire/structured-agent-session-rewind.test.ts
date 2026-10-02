@@ -10,7 +10,8 @@ import {
 } from '../../../shared/agent-session-journal-item-key'
 import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session-mutation-envelope'
 import { nativeChatTurnMembership } from '../../../shared/native-chat-turn-membership'
-import { AgentSessionRecordStore } from '../../runtime/agent-session-record-store'
+import type { AgentSessionRecordStore } from '../../runtime/agent-session-record-store'
+import { openTestAgentSessionRecordStore } from '../../runtime/agent-session-record-store-test-harness'
 import { StructuredAgentSessionHost } from './structured-agent-session-host'
 import type {
   StructuredAgentSessionAdapter,
@@ -28,6 +29,7 @@ import {
   resetHostTestOperationIds
 } from './structured-agent-session-host-test-data'
 import { openTestJournalHostDatabase } from '../agent-session-journal/journal-host-database-test-support'
+import { createStructuredAgentSessionLogger } from './structured-agent-session-logger'
 
 const caller = { callerKey: 'desktop' }
 let directory: string
@@ -53,10 +55,7 @@ beforeEach(async () => {
   })
   acquires = []
   directory = await mkdtemp(join(tmpdir(), 'orca-rewind-'))
-  store = await AgentSessionRecordStore.open({
-    directory: join(directory, 'store'),
-    hostId: 'local'
-  })
+  store = await openTestAgentSessionRecordStore(directory)
   adapter = {
     supportsCreate: (_location, agent) => agent === 'codex',
     supportsLocation: () => true,
@@ -94,6 +93,7 @@ beforeEach(async () => {
     closeSession: async () => true
   }
   host = new StructuredAgentSessionHost({
+    logger: createStructuredAgentSessionLogger(),
     store,
     adapter,
     journalDatabase: openTestJournalHostDatabase(directory),

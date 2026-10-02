@@ -7,43 +7,40 @@ describe('two-host Run-home routing through RPC and durable relay', () => {
   let pair: ReturnType<typeof createRunHomePair>
   afterEach(() => pair?.close())
 
-  it.each([1, 2, 3])(
-    'preserves capability-bound relay custody with protocol %i',
-    async (version) => {
-      pair = createRunHomePair(version)
-      const { workerDb, homeDb, homeRuntime, run, dispatch } = pair
-      expect(workerDb.getRun(run.id)?.home_database).toBe('remote')
-      const sent = await pair.send('report')
-      expect(sent).toMatchObject({
-        ok: true,
-        result: {
-          relay: {
-            state: 'queued',
-            destination: 'run_home',
-            custody: 'worker_relay',
-            homeRunId: run.id,
-            accepted: true
-          }
+  it.each([1, 2, 3])('preserves worker-bound relay custody with protocol %i', async (version) => {
+    pair = createRunHomePair(version)
+    const { workerDb, homeDb, homeRuntime, run, dispatch } = pair
+    expect(workerDb.getRun(run.id)?.home_database).toBe('remote')
+    const sent = await pair.send('report')
+    expect(sent).toMatchObject({
+      ok: true,
+      result: {
+        relay: {
+          state: 'queued',
+          destination: 'run_home',
+          custody: 'worker_relay',
+          homeRunId: run.id,
+          accepted: true
         }
-      })
-      expect(workerDb.getUnreadRunMailbox(run.id)).toHaveLength(0)
-      expect(homeDb.getUnreadRunMailbox(run.id)).toHaveLength(0)
-      await syncFederatedDispatch(homeRuntime, dispatch.id)
-      expect(homeDb.getUnreadRunMailbox(run.id)).toHaveLength(1)
-      const checked = await pair.homeDispatcher.dispatch({
-        id: 'check',
-        authToken: 'home-token',
-        method: 'orchestration.check',
-        orchestrationContractVersion: ORCHESTRATION_CONTRACT_VERSION,
-        orchestrationRequestId: 'check',
-        params: { terminal: 'term_coord', run: run.id }
-      })
-      expect(checked).toMatchObject({
-        ok: true,
-        result: { count: 1, messages: [{ subject: 'Progress', to_handle: `run:${run.id}` }] }
-      })
-    }
-  )
+      }
+    })
+    expect(workerDb.getUnreadRunMailbox(run.id)).toHaveLength(0)
+    expect(homeDb.getUnreadRunMailbox(run.id)).toHaveLength(0)
+    await syncFederatedDispatch(homeRuntime, dispatch.id)
+    expect(homeDb.getUnreadRunMailbox(run.id)).toHaveLength(1)
+    const checked = await pair.homeDispatcher.dispatch({
+      id: 'check',
+      authToken: 'home-token',
+      method: 'orchestration.check',
+      orchestrationContractVersion: ORCHESTRATION_CONTRACT_VERSION,
+      orchestrationRequestId: 'check',
+      params: { terminal: 'term_coord', run: run.id }
+    })
+    expect(checked).toMatchObject({
+      ok: true,
+      result: { count: 1, messages: [{ subject: 'Progress', to_handle: `run:${run.id}` }] }
+    })
+  })
 
   it('rejects an unbound shadow send through RPC with no mailbox or relay effect', async () => {
     pair = createRunHomePair(2)
@@ -119,12 +116,12 @@ describe('two-host Run-home routing through RPC and durable relay', () => {
     expect(pair.homeDb.getUnreadRunMailbox(pair.run.id)).toHaveLength(1)
   })
 
-  it('rejects stale capability authority before either mailbox changes', async () => {
+  it('rejects changed worker identity before either mailbox changes', async () => {
     pair = createRunHomePair(2)
     vi.mocked(pair.workerRuntime.getTerminalProcessIncarnation).mockReturnValue('worker:pty:2')
     expect(await pair.send('stale')).toMatchObject({
       ok: false,
-      error: { code: 'dispatch_capability_invalid' }
+      error: { code: 'worker_identity_changed' }
     })
     expect(pair.workerDb.listPendingFederationRelay(pair.dispatch.id, 'to_home')).toHaveLength(0)
     expect(pair.workerDb.getInbox(100)).toHaveLength(0)
