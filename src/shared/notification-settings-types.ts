@@ -1,6 +1,6 @@
 import type { AgentStatusState, AgentType } from './agent-status-types'
 import type { WorkspaceNotificationOrigin } from './workspace-notification-policy'
-import type { AgentJournalTurnOutcome } from './agent-turn-outcome'
+import type { AgentTurnOutcome } from './agent-turn-outcome'
 
 export type NotificationSettings = {
   enabled: boolean
@@ -50,7 +50,7 @@ export type NotificationDispatchRequest = {
   agentToolInput?: string
   agentLastAssistantMessage?: string
   /** The verdict on the turn this notification reports, which picks its wording. */
-  agentTurnOutcome?: AgentJournalTurnOutcome
+  agentTurnOutcome?: AgentTurnOutcome
   /**
    * Which lane raised this, so the click handler knows how to reveal the subject. Absent means the
    * terminal lane, which is every sender that predates structured chat.

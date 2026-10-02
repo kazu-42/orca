@@ -235,7 +235,8 @@ export function getNotificationWorkspaceLabels(
     return {
       repoLabel: group?.name,
       worktreeLabel: folder?.name || fallback,
-      ...(folder ? { workspaceOrigin: 'other' as const } : {})
+      // Folder scopes cannot carry CLI or automation provenance, even before catalog hydration.
+      workspaceOrigin: 'other'
     }
   }
   const worktreeId = scope?.type === 'worktree' ? scope.worktreeId : workspaceId

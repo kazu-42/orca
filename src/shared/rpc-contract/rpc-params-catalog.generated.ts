@@ -23,6 +23,7 @@ import {
   PairingProvisionRelayParamsSchema
 } from '../mobile-relay-credential-contract'
 import { MobileWebBundleChunkParamsSchema } from '../mobile-web-bundle/bundle-rpc-contract'
+import { OrcadTerminalCensusParamsSchema } from '../orcad-terminal-census'
 import { pluginConsentRequestSchema } from '../plugins/plugin-consent-request'
 import {
   AccountsUnsubscribeParams,
@@ -171,6 +172,7 @@ import {
   DocPreviewFileRead,
   FileListAll,
   FileOpenDiff,
+  FileOpenTab,
   FilePathSearch,
   FilePathsExist,
   FileReadChunk,
@@ -508,6 +510,7 @@ import {
   TerminalResolveActive,
   TerminalResolvePane,
   TerminalSend,
+  TerminalSetViewerColors,
   TerminalSplit,
   TerminalStopExact,
   TerminalWait
@@ -761,7 +764,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'files.list': WorktreeSelector,
   'files.listAll': FileListAll,
   'files.listMarkdownDocuments': WorktreeSelector,
-  'files.open': FileOpen,
+  'files.open': FileOpenTab,
   'files.openDiff': FileOpenDiff,
   'files.pathsExist': FilePathsExist,
   'files.read': FileOpen,
@@ -984,6 +987,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'notifications.testPush': null,
   'notifications.unregisterPush': null,
   'notifications.unsubscribe': NotificationUnsubscribeParams,
+  'orcad.terminalCensus': OrcadTerminalCensusParamsSchema,
   'orchestration.ask': AskParams,
   'orchestration.check': CheckParams,
   'orchestration.dispatch': DispatchParams,
@@ -1151,6 +1155,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'terminal.send': TerminalSend,
   'terminal.setAutoRestoreFit': TerminalSetAutoRestoreFit,
   'terminal.setDisplayMode': TerminalSetDisplayMode,
+  'terminal.setViewerColors': TerminalSetViewerColors,
   'terminal.show': TerminalHandle,
   'terminal.sleep': TerminalCloseAll,
   'terminal.split': TerminalSplit,

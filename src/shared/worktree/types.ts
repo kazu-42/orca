@@ -144,6 +144,9 @@ export type Worktree = {
   automationProvenance?: AutomationWorkspaceProvenance
   orcaCreationSource?: 'desktop' | 'runtime' | 'cli' | 'ssh'
   cliProvenance?: CliWorkspaceProvenance
+  /** The host is deleting this checkout in the background; Git lists it until that finishes.
+   *  Sent only to clients that advertise `worktree.background-removal.v1`. */
+  removing?: true
 } & GitWorktreeInfo
 
 /** Provenance for workspaces created through `orca worktree create`. Absent on

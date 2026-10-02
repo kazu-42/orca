@@ -18,6 +18,30 @@ vi.mock('@/lib/desktop-notification-sound', async () => {
 
 afterEach(() => vi.unstubAllGlobals())
 
+it.each([
+  [false, false],
+  [false, true],
+  [true, false]
+] as const)(
+  'delivers an unhydrated folder completion with CLI: %s, automation: %s',
+  (cliWorktreeTaskComplete, automationWorktreeTaskComplete) => {
+    const state = resetNotificationDispatchMockState()
+    const workspaceId = 'folder:unhydrated'
+    state.settings.notifications = { cliWorktreeTaskComplete, automationWorktreeTaskComplete }
+    state.tabsByWorktree = { [workspaceId]: state.tabsByWorktree['wt-primary'] }
+    dispatchTerminalNotification(workspaceId, {
+      source: 'agent-task-complete',
+      terminalTitle: 'codex',
+      paneKey: PANE_KEY
+    })
+    expect(window.api.notifications.dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ workspaceOrigin: 'other', worktreeId: workspaceId })
+    )
+    expect(state.markWorktreeUnread).toHaveBeenCalledWith(workspaceId)
+    expect(state.markAgentCompletionPaneUnread).toHaveBeenCalledWith(PANE_KEY, 'agent-completion')
+  }
+)
+
 it.each(['cli', 'automation'] as const)(
   'preserves every unread marker and sends %s provenance to the main delivery gate',
   (workspaceOrigin) => {

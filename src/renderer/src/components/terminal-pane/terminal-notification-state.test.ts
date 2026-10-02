@@ -33,7 +33,7 @@ describe('notification workspace labels', () => {
     'classifies %s-created folder repositories through their persisted worktree metadata',
     (origin) => {
       const state = stateWithWorkspace()
-      const repo = { ...state.repos[0], workspaceType: 'folder' as const }
+      const repo = { ...state.repos[0], kind: 'folder' as const }
       const id = `${repo.id}::${repo.path}::workspace:folder-instance`
       state.repos = [repo]
       state.worktreesByRepo.repo = [
@@ -280,6 +280,7 @@ describe('notification workspace labels', () => {
     )
     expect(getNotificationWorkspaceLabels(state, 'folder:duplicate', 'Terminal')).toEqual({
       repoLabel: undefined,
+      workspaceOrigin: 'other',
       worktreeLabel: 'Terminal'
     })
   })
@@ -389,12 +390,12 @@ describe('notification workspace labels', () => {
       const state = stateWithWorkspace()
       expect(getNotificationWorkspaceLabels(state, id, 'My terminal')).toEqual({
         repoLabel: undefined,
-        ...(id === FLOATING_TERMINAL_WORKTREE_ID ? { workspaceOrigin: 'other' } : {}),
+        ...(id === 'missing-worktree' ? {} : { workspaceOrigin: 'other' }),
         worktreeLabel: 'My terminal'
       })
       expect(getNotificationWorkspaceLabels(state, id, '  ')).toEqual({
         repoLabel: undefined,
-        ...(id === FLOATING_TERMINAL_WORKTREE_ID ? { workspaceOrigin: 'other' } : {}),
+        ...(id === 'missing-worktree' ? {} : { workspaceOrigin: 'other' }),
         worktreeLabel: 'workspace'
       })
     }
