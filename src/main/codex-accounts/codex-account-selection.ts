@@ -10,6 +10,7 @@ import type { CodexConfigMirror } from './codex-config-mirror'
 import type { CodexAccountServiceLifecycle } from './codex-account-service-types'
 import { toCodexManagedAccountSummary } from './codex-account-service-types'
 import { reconcileCodexAccountRemoval } from './codex-account-removal-reconciliation'
+import { canSkipCodexRemovalRuntimeSync } from './inactive-removal-runtime-sync'
 import {
   getCodexSelectionLaneKey,
   getCodexSelectionTargetForAccount,
@@ -84,6 +85,11 @@ export class CodexAccountSelection {
       nextAccounts
     )
 
+    const skipRuntimeSync =
+      account.managedHomeRuntime !== 'wsl' &&
+      canSkipCodexRemovalRuntimeSync(settings, nextAccounts, nextSelection, () =>
+        this.dependencies.runtimeHome.getSelectedHostAccountCodexHomePath()
+      )
     const settingsUpdate = {
       codexManagedAccounts: nextAccounts,
       activeCodexManagedAccountId: nextSelection.host,
@@ -94,15 +100,17 @@ export class CodexAccountSelection {
       const reconciledUpdate = this.dependencies.store.withCodexAccountSettingsPreview(
         settingsUpdate,
         () =>
-          reconcileCodexAccountRemoval(
-            this.dependencies.store,
-            (target) => {
-              touchedTargets.set(getCodexSelectionLaneKey(target), target)
-              this.dependencies.runtimeHome.syncForCurrentSelection(target)
-            },
-            accountTarget,
-            normalizeCodexRuntimeSelection(settings)
-          )
+          skipRuntimeSync
+            ? settingsUpdate
+            : reconcileCodexAccountRemoval(
+                this.dependencies.store,
+                (target) => {
+                  touchedTargets.set(getCodexSelectionLaneKey(target), target)
+                  this.dependencies.runtimeHome.syncForCurrentSelection(target)
+                },
+                accountTarget,
+                normalizeCodexRuntimeSelection(settings)
+              )
       )
       // Retain the target before the destructive commit, so restart can retry lost acknowledgements.
       await this.dependencies.store.retainCodexAccountRemovalRecoveryAndFlush(account)
@@ -146,12 +154,14 @@ export class CodexAccountSelection {
     } catch (error) {
       console.error('[codex-accounts] Failed to evict removed account quota cache:', error)
     }
-    this.startQuotaRefresh(
-      getSelectedCodexAccountIdForTarget(settings, accountTarget) === accountId
-        ? accountId
-        : undefined,
-      accountTarget
-    )
+    if (!skipRuntimeSync) {
+      this.startQuotaRefresh(
+        getSelectedCodexAccountIdForTarget(settings, accountTarget) === accountId
+          ? accountId
+          : undefined,
+        accountTarget
+      )
+    }
     return this.snapshot()
   }
 
