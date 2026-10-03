@@ -1026,6 +1026,10 @@
                 }
               },
               "discard": {
+                "confirmation": {
+                  "1426c2efff": "This will revert all changes to this file. This cannot be undone.",
+                  "40e9357b2a": "This will restore the file from HEAD and discard the deletion. This cannot be undone."
+                },
                 "dialog": {
                   "48c5ef95d9": "area",
                   "6de99d162b": "entry"
@@ -1151,6 +1155,7 @@
           "d420c43729": "Imported {{value0}} cookies from {{value1}}{{value2}} into {{value3}}."
         },
         "BrowserUsePane": {
+          "de9b2f32f3": "Enable",
           "e44c5d681e": "From"
         },
         "CliSection": {
@@ -1588,14 +1593,12 @@
             "042c551bc5": "config",
             "0d1c334987": "lid",
             "0d752916f8": "hooks",
-            "agent-trust-trust": "trust",
-            "agent-trust-folder": "folder",
-            "agent-trust-worktree": "worktree",
             "13b20636a6": "waiting",
             "167daeb5e9": "command",
             "2afd3b5858": "enable",
             "2e188c771c": "hide",
             "32836788b0": "generated title",
+            "34337ed5c7": "isolate",
             "48f84d10f1": "running",
             "52115d0d7c": "auto",
             "5784ae8c43": "rename",
@@ -1605,16 +1608,22 @@
             "66b6b82eb4": "awake",
             "6956646a1e": "title",
             "6984d4291a": "status",
+            "7e15b89f6e": "server",
             "845ad9128a": "power",
             "848dcae8d3": "generated",
             "8599603496": "done",
             "87fffe6c20": "show",
             "8a17fd6026": "stable",
             "966890236d": "name",
+            "9a84e65118": "agents overview",
+            "9f3becc4e8": "shared",
             "a6d594c17d": "install",
             "a79d266f71": "session",
             "afbf35be68": "stable session",
             "affbf130f6": "working",
+            "agent-trust-folder": "folder",
+            "agent-trust-trust": "trust",
+            "agent-trust-worktree": "worktree",
             "be59907510": "override",
             "be7ea3553b": "tab",
             "c1317fe641": "restore",
@@ -1627,6 +1636,7 @@
             "ef804b7337": "Agent Location",
             "f2932bf22b": "detected",
             "f412abbba5": "claude",
+            "ff457e1e7b": "daemon",
             "ff8de8a2ad": "display"
           }
         },
@@ -2606,12 +2616,12 @@
     },
     "hooks": {
       "useComposerState": {
-        "attachSkipMissing": "No longer at its original path.",
-        "attachSkipPermissionDenied": "Permission denied.",
-        "attachSkipSymlink": "Symbolic links cannot be attached.",
-        "attachSkipUnsupported": "Unsupported file type.",
         "dropPartiallyAttached_one": "{{failureCount}} of {{count}} item could not be attached.",
         "dropPartiallyAttached_other": "{{failureCount}} of {{count}} items could not be attached."
+      },
+      "useGlobalFileDrop": {
+        "nativeDropTempCopyFailed_one": "Orca couldn't copy {{count}} dropped file.",
+        "nativeDropTempCopyFailed_other": "Orca couldn't copy {{count}} dropped files."
       },
       "useIpcEvents": {
         "60428567b4": "Local terminal reveal is unavailable while a remote runtime is active",
@@ -2630,6 +2640,12 @@
             }
           }
         }
+      },
+      "dropSkipReason": {
+        "missing": "No longer at its original path.",
+        "permissionDenied": "Permission denied.",
+        "symlink": "Symbolic links cannot be attached.",
+        "unsupported": "Unsupported file type."
       },
       "terminal": {
         "shortcut": {
@@ -2707,6 +2723,66 @@
         "effort": "Effort",
         "imageUnsupported": "Image paste is not supported for this agent."
       },
+      "failureWords": {
+        "accountSwitchInProgress": "A Claude account switch is in progress. Try again after it finishes.",
+        "answerUnconfirmed": "Your answer was recorded but the agent did not confirm it.",
+        "attachmentAtMost": "{{agent}} accepts at most {{limit}} images in one message, so this message was not sent.",
+        "attachmentEmpty": "An image on this message is empty, so the message was not sent.",
+        "attachmentInvalid": "An attachment on this message can't be sent to the agent.",
+        "attachmentLargerThan": "An image on this message is larger than {{size}} MB, so the message was not sent.",
+        "attachmentNoSource": "An image on this message has no file to send, so the message was not sent.",
+        "attachmentNotAFile": "An image on this message isn't a file, so the message was not sent.",
+        "attachmentTooLarge": "An image on this message is too large, so the message was not sent.",
+        "attachmentTooMany": "This message has too many images, so it was not sent.",
+        "attachmentTotalMoreThan": "The images on this message add up to more than {{size}} MB, so the message was not sent.",
+        "attachmentTotalTooLarge": "The images on this message are too large together, so the message was not sent.",
+        "attachmentUnreadable": "An attachment on this message couldn't be read, so the message was not sent.",
+        "attachmentUnsupportedType": "{{agent}} accepts only PNG, JPEG, GIF, and WebP images, so this message was not sent.",
+        "cancelUnconfirmed": "Cancellation was not confirmed.",
+        "cancelled": "This message was withdrawn before the agent started it.",
+        "chatClosed": "The chat closed before this message was sent.",
+        "chooseClaudeAccount": "Choose or add one in Claude Accounts settings.",
+        "chooseClaudeAccountThenRunCommand": "Choose or add one in Claude Accounts settings, then run /{{command}} again.",
+        "chooseClaudeAccountThenSend": "Choose or add one in Claude Accounts settings, then send your message again.",
+        "commandRefused": "This command didn't run.",
+        "commandRefusedTryAgain": "This command didn't run. Try it again.",
+        "compactionFailed": "Compaction failed.",
+        "compactionFailedQuoted": "Compaction failed: {{detail}}.",
+        "compactionUnconfirmed": "Compaction completion is unconfirmed.",
+        "couldNotRestart": "{{agent}} couldn't restart.",
+        "couldNotStart": "{{agent}} couldn't start.",
+        "emptyMessage": "This message is empty, so it was not sent.",
+        "historyTooLarge": "This conversation's history is too large to restore here.",
+        "hostFault": "Orca ran into a problem, so this didn't go through.",
+        "hostFaultTryAgain": "Orca ran into a problem, so this didn't go through. Try again.",
+        "hostRestarted": "Orca restarted before this message was sent.",
+        "hostStopped": "{{agent}} never finished starting, so Orca stopped it.",
+        "managedAccountEnvOverride": "This Claude launch sets its own Anthropic sign-in variables. Remove them to use a managed Claude account.",
+        "managedAccountUnsupported": "While a Claude account is added in WSL, Claude chats need a Windows Claude account.",
+        "noTurnToStop": "{{agent}} had no turn running to stop.",
+        "notDelivered": "This message was not delivered.",
+        "notDeliveredSendAgain": "This message was not delivered. Send it again to continue.",
+        "notSignedIn": "{{agent}} is not signed in for the selected account.",
+        "previousExitUnverifiable": "Orca couldn't confirm {{agent}}'s previous process ended. Messages wait to be sent until Orca confirms it has ended.",
+        "providerExitedRejection": "{{agent}} stopped before this message was sent.",
+        "providerExitedRow": "{{agent}} stopped while this response was in progress. You can continue in this conversation.",
+        "providerRateLimited": "{{agent}} is rate-limited and retrying.",
+        "providerRejected": "The provider did not accept this message.",
+        "providerRejectedQuoted": "The provider did not accept this message: {{detail}}.",
+        "providerRetrying": "{{agent}} hit a temporary problem and is retrying.",
+        "providerRetryingQuoted": "{{agent}} is retrying: {{detail}}.",
+        "providerStartFailed": "{{agent}} stopped before it finished starting.",
+        "queueFull": "Too many messages were waiting for the agent, so this one was not sent.",
+        "runCommandAgain": "Run /{{command}} again.",
+        "sendToTryAgain": "Send your message to try again.",
+        "signInFirst": "Sign in first.",
+        "signInThenRunCommand": "Sign in, then run /{{command}} again.",
+        "signInThenSend": "Sign in, then send your message again.",
+        "stopRefused": "{{agent}} didn't stop.",
+        "stopRefusedQuoted": "{{agent}} didn't stop: {{detail}}.",
+        "theAgent": "The agent",
+        "writeFailed": "Orca couldn't hand this message to the agent, so it was not sent."
+      },
       "question": {
         "other": "Other…"
       },
@@ -2716,6 +2792,7 @@
           "title": "Start a chat with {{value0}}"
         },
         "error": {
+          "keepsTrying": "Orca keeps trying to load it.",
           "retryingSubtitle": "The transcript could not be read. Orca keeps trying to load it.",
           "subtitle": "The transcript could not be read. Toggle back to the terminal to keep working.",
           "title": "Could not load conversation"
@@ -2730,14 +2807,12 @@
         }
       },
       "status": {
+        "failedAfter": "Failed after {{value0}}",
+        "interruptedAfter": "Interrupted after {{value0}}",
         "responding": "Agent is responding",
         "toggleDetails": "Toggle turn details",
         "workedFor": "Worked for {{value0}}",
         "workingFor": "Working for {{value0}}"
-      },
-      "subagents": {
-        "unnamed": "Subagent",
-        "writtenBy": "Written by subagent {{value0}}"
       },
       "tool": {
         "countN": "{{value0}} tool calls",

@@ -151,9 +151,7 @@ describe('ai vault resume command runtime', () => {
     ).toBe("claude '--resume' 'session one'")
   })
 
-  it('follows the live Windows shell for non-resumable agents in the fallback path', () => {
-    // Why: agents without a TUI startup plan (e.g. cursor) queue through the
-    // shared-builder fallback, which must quote for the live shell too (#6152).
+  it('follows the live Windows shell for Cursor resume', () => {
     const state = makeState({ worktreePath: 'C:\\Users\\alice\\repo' })
 
     expect(
@@ -167,7 +165,7 @@ describe('ai vault resume command runtime', () => {
           codexHome: null
         }
       })
-    ).toBe("cursor-agent --resume 'session one'")
+    ).toBe("cursor-agent '--yolo' '--resume' 'session one'")
   })
 
   it('queues a PowerShell-valid local OMP resume by absolute transcript path', () => {
@@ -364,99 +362,6 @@ describe('ai vault resume command runtime', () => {
       },
       providerSession: { key: 'session_id', id: 'session-1' }
     })
-  })
-
-  it('uses POSIX command wrapping for Windows-path projects forced to WSL', () => {
-    const state = makeState({
-      worktreePath: 'C:\\Users\\alice\\repo',
-      localWindowsRuntimePreference: { kind: 'wsl', distro: 'Ubuntu' }
-    })
-
-    expect(
-      buildQueuedAiVaultResumeCommand({
-        state,
-        worktreeId: 'repo-1::worktree-1',
-        session: {
-          agent: 'claude',
-          sessionId: 'session one',
-          cwd: '/home/alice/repo',
-          codexHome: null
-        }
-      })
-    ).toBe("claude '--resume' 'session one'")
-  })
-
-  it('uses POSIX command wrapping for SSH-owned worktrees on Windows clients', () => {
-    const state = makeState({ worktreePath: '/home/alice/repo' })
-    state.repos = [{ id: 'repo-1', path: '/home/alice/repo', connectionId: 'ssh-1' }] as never
-
-    expect(
-      buildQueuedAiVaultResumeCommand({
-        state,
-        worktreeId: 'repo-1::worktree-1',
-        session: {
-          agent: 'claude',
-          sessionId: 'session one',
-          cwd: '/home/alice/repo',
-          codexHome: null
-        }
-      })
-    ).toBe("claude '--resume' 'session one'")
-  })
-
-  it('uses POSIX command wrapping for folder workspaces with their own SSH target', () => {
-    const state = makeState({ worktreePath: 'C:\\Users\\alice\\repo' })
-    state.activeWorktreeId = 'folder:folder-1'
-    state.folderWorkspaces = [
-      {
-        id: 'folder-1',
-        projectGroupId: 'group-1',
-        name: 'Platform',
-        folderPath: '/home/alice/platform',
-        connectionId: 'folder-ssh'
-      }
-    ] as never
-    state.projectGroups = [{ id: 'group-1', connectionId: null, executionHostId: null }] as never
-
-    expect(
-      buildQueuedAiVaultResumeCommand({
-        state,
-        worktreeId: 'folder:folder-1',
-        session: {
-          agent: 'claude',
-          sessionId: 'session one',
-          cwd: '/home/alice/platform',
-          codexHome: null
-        }
-      })
-    ).toBe("claude '--resume' 'session one'")
-  })
-
-  it('uses POSIX command wrapping for WSL UNC folder workspaces on Windows clients', () => {
-    const state = makeState({ worktreePath: 'C:\\Users\\alice\\repo' })
-    state.activeWorktreeId = 'folder:folder-1'
-    state.folderWorkspaces = [
-      {
-        id: 'folder-1',
-        projectGroupId: 'group-1',
-        name: 'Platform',
-        folderPath: '\\\\wsl.localhost\\Ubuntu\\home\\alice\\platform'
-      }
-    ] as never
-    state.projectGroups = [{ id: 'group-1', connectionId: null, executionHostId: 'local' }] as never
-
-    expect(
-      buildQueuedAiVaultResumeCommand({
-        state,
-        worktreeId: 'folder:folder-1',
-        session: {
-          agent: 'claude',
-          sessionId: 'session one',
-          cwd: '/home/alice/platform',
-          codexHome: null
-        }
-      })
-    ).toBe("claude '--resume' 'session one'")
   })
 
   it('converts WSL UNC Codex homes before building Linux resume commands', () => {

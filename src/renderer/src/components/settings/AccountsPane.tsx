@@ -1,3 +1,4 @@
+import type { SecretAtRestProtection } from '../../../../shared/secret-at-rest-protection'
 import { useEffect, useRef, useState } from 'react'
 import type {
   ClaudeRateLimitAccountsState,
@@ -20,6 +21,7 @@ import {
   getAccountsGeminiSearchEntries,
   getAccountsCursorSearchEntries,
   getAccountsGrokSearchEntries,
+  getAccountsAntigravitySearchEntries,
   getAccountsLocationSearchEntries,
   getAccountsMiniMaxSearchEntries,
   getAccountsOpencodeSearchEntries,
@@ -37,6 +39,8 @@ import {
   providerAccountMatchesView
 } from './provider-account-visibility'
 import { GrokAccountsSection } from './GrokAccountsSection'
+import { AntigravityAccountsSection } from './AntigravityAccountsSection'
+import { getActiveRuntimeTarget } from '@/runtime/runtime-rpc-client'
 import { CursorAccountsSection } from './CursorAccountsSection'
 import type {
   AccountsPaneProps,
@@ -86,7 +90,11 @@ export function AccountsPane({
   const [miniMaxCookieDraft, setMiniMaxCookieDraft] = useState('')
   const [miniMaxApiKeyDraft, setMiniMaxApiKeyDraft] = useState('')
   const [miniMaxApiKeyConfigured, setMiniMaxApiKeyConfigured] = useState(false)
+  const [miniMaxApiKeyProtection, setMiniMaxApiKeyProtection] =
+    useState<SecretAtRestProtection | null>(null)
   const [miniMaxConfigured, setMiniMaxConfigured] = useState(false)
+  const [miniMaxCookieProtection, setMiniMaxCookieProtection] =
+    useState<SecretAtRestProtection | null>(null)
   const [miniMaxCredentialBusy, setMiniMaxCredentialBusy] = useState(false)
   const localAccountRuntime = getSelectedAccountRuntime(
     settings,
@@ -230,6 +238,8 @@ export function AccountsPane({
       const status = await window.api.minimaxCredentials.getStatus()
       setMiniMaxConfigured(status.cookieConfigured)
       setMiniMaxApiKeyConfigured(status.apiKeyConfigured)
+      setMiniMaxCookieProtection(status.cookieProtection)
+      setMiniMaxApiKeyProtection(status.apiKeyProtection)
     } catch (error) {
       console.error('Failed to load MiniMax credential status:', error)
     }
@@ -241,7 +251,9 @@ export function AccountsPane({
       miniMaxApiKeyDraft,
       setMiniMaxApiKeyDraft,
       setMiniMaxApiKeyConfigured,
+      setMiniMaxApiKeyProtection,
       setMiniMaxConfigured,
+      setMiniMaxCookieProtection,
       setMiniMaxCredentialBusy,
       recordFeatureInteraction
     })
@@ -349,11 +361,13 @@ export function AccountsPane({
     miniMaxApiKeyDraft,
     setMiniMaxApiKeyDraft,
     miniMaxApiKeyConfigured,
+    miniMaxApiKeyProtection,
     saveMiniMaxApiKey,
     clearMiniMaxApiKey,
     miniMaxCookieDraft,
     setMiniMaxCookieDraft,
     miniMaxConfigured,
+    miniMaxCookieProtection,
     miniMaxCredentialBusy,
     saveMiniMaxCookie,
     clearMiniMaxCookie
@@ -373,6 +387,14 @@ export function AccountsPane({
     matchesSettingsSearch(searchQuery, getAccountsGeminiSearchEntries())
       ? renderGeminiAccountsSection(model)
       : null,
+    matchesSettingsSearch(searchQuery, getAccountsAntigravitySearchEntries()) ? (
+      <AntigravityAccountsSection
+        key={`antigravity:${settings.activeRuntimeEnvironmentId ?? 'local'}:${accountRuntime.runtime}:${accountRuntime.wslDistro ?? ''}`}
+        owner={getActiveRuntimeTarget(settings)}
+        target={{ runtime: accountRuntime.runtime, wslDistro: accountRuntime.wslDistro }}
+        label={accountRuntimeSentenceLabel}
+      />
+    ) : null,
     matchesSettingsSearch(searchQuery, getAccountsOpencodeSearchEntries())
       ? renderOpenCodeAccountsSection(model)
       : null,
