@@ -30,6 +30,13 @@ export function allowsWorkspaceAgentNotification(
   if (agentState !== undefined && agentState !== 'done') {
     return true
   }
+  // Unresolved ownership must respect every origin that could own the completion.
+  if (origin === undefined) {
+    return (
+      settings.cliWorktreeTaskComplete !== false &&
+      settings.automationWorktreeTaskComplete !== false
+    )
+  }
   if (origin === 'automation') {
     return settings.automationWorktreeTaskComplete !== false
   }

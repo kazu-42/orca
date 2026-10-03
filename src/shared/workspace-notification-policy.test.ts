@@ -43,7 +43,11 @@ describe('workspace notification provenance', () => {
     ['cli', true, false, true],
     ['automation', false, true, true],
     ['automation', true, false, false],
-    ['other', false, false, true]
+    ['other', false, false, true],
+    [undefined, false, false, false],
+    [undefined, false, true, false],
+    [undefined, true, false, false],
+    [undefined, true, true, true]
   ] as const)(
     'applies independent settings for %s (%s, %s)',
     (origin, cli, automation, allowed) => {

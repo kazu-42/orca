@@ -87,16 +87,23 @@ beforeEach(() => {
 })
 
 describe('createNotificationDeliveryService', () => {
-  it('keeps requests without workspace origin enabled when both provenance settings are off', () => {
+  it.each([
+    [false, false],
+    [false, true],
+    [true, false]
+  ] as const)('mutes unresolved completions with CLI: %s, automation: %s', (cli, automation) => {
     const harness = makeHarness(
-      makeSettings({ cliWorktreeTaskComplete: false, automationWorktreeTaskComplete: false })
+      makeSettings({ cliWorktreeTaskComplete: cli, automationWorktreeTaskComplete: automation })
     )
     expect(createNotificationDeliveryService(harness.deps).dispatch(makeRequest())).toEqual({
-      delivered: true
+      delivered: false,
+      reason: 'source-disabled'
     })
+    expect(harness.deliverNative).not.toHaveBeenCalled()
     expect(harness.dispatchMobileNotification).toHaveBeenCalledWith(
-      expect.not.objectContaining({ desktopAllowed: false })
+      expect.objectContaining({ desktopAllowed: false })
     )
+    expect(harness.setTrayAttention).toHaveBeenCalledWith(true)
   })
 
   it.each(['blocked', 'waiting'] as const)(
@@ -112,39 +119,42 @@ describe('createNotificationDeliveryService', () => {
       controller.onDispatched((event) => push.dispatcher.enqueue(event))
       harness.deps.dispatchMobileNotification = (event) => controller.dispatch(event)
       const service = createNotificationDeliveryService(harness.deps)
-      for (const workspaceOrigin of ['cli', 'automation'] as const) {
+      for (const workspaceOrigin of ['cli', 'automation', undefined] as const) {
         now += 60_000
         expect(service.dispatch(makeRequest({ workspaceOrigin, agentState }))).toEqual({
           delivered: true
         })
       }
       await flush()
-      expect(push.sends).toHaveLength(2)
+      expect(push.sends).toHaveLength(3)
       expect(push.sends[0].notification.agentState).toBe('needs-input')
     }
   )
 
-  it('keeps muted completions out of the push gateway and legacy socket alerts without suppressing later ordinary completions', async () => {
-    const harness = makeHarness(makeSettings({ cliWorktreeTaskComplete: false }))
-    const controller = new RuntimeMobileNotificationController()
-    const push = createPushHarness({
-      devices: [{ deviceId: 'phone', pushRegistration: registration() }]
-    })
-    controller.onDispatched((event) => push.dispatcher.enqueue(event))
-    harness.deps.dispatchMobileNotification = (event) => controller.dispatch(event)
-    const service = createNotificationDeliveryService(harness.deps)
-    service.dispatch(makeRequest({ workspaceOrigin: 'cli' }))
-    await flush()
-    expect(push.sends).toHaveLength(0)
-    expect(controller.getMissedSince(0)[0]).toMatchObject({
-      desktopAllowed: false,
-      legacySocketAllowed: false
-    })
-    service.dispatch(makeRequest())
-    await flush()
-    expect(push.sends).toHaveLength(1)
-    expect(harness.deliverNative).toHaveBeenCalledTimes(1)
-  })
+  it.each(['cli', undefined] as const)(
+    'keeps muted %s completions out of phone pushes without suppressing later ordinary completions',
+    async (workspaceOrigin) => {
+      const harness = makeHarness(makeSettings({ cliWorktreeTaskComplete: false }))
+      const controller = new RuntimeMobileNotificationController()
+      const push = createPushHarness({
+        devices: [{ deviceId: 'phone', pushRegistration: registration() }]
+      })
+      controller.onDispatched((event) => push.dispatcher.enqueue(event))
+      harness.deps.dispatchMobileNotification = (event) => controller.dispatch(event)
+      const service = createNotificationDeliveryService(harness.deps)
+      service.dispatch(makeRequest({ workspaceOrigin }))
+      await flush()
+      expect(push.sends).toHaveLength(0)
+      expect(controller.getMissedSince(0)[0]).toMatchObject({
+        desktopAllowed: false,
+        legacySocketAllowed: false
+      })
+      service.dispatch(makeRequest({ workspaceOrigin: 'other' }))
+      await flush()
+      expect(push.sends).toHaveLength(1)
+      expect(harness.deliverNative).toHaveBeenCalledTimes(1)
+    }
+  )
 
   it.each(['cli', 'automation', 'other', undefined] as const)(
     'keeps the master switch authoritative for %s and old settings enabled',
