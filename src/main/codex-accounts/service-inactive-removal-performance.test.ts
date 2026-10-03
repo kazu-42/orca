@@ -112,4 +112,17 @@ describe('inactive Codex account removal', () => {
     expect(sync).toHaveBeenCalledOnce()
     expect(rateLimits.refreshForCodexAccountChange).toHaveBeenCalledOnce()
   })
+
+  it('does not infer WSL runtime ownership from a trusted host home', async () => {
+    const { store, accounts, selection, sync, rateLimits } = await fixture()
+    store.updateSettings({
+      codexManagedAccounts: [
+        accounts[0],
+        { ...accounts[1], managedHomeRuntime: 'wsl', wslDistro: 'Ubuntu' }
+      ]
+    })
+    await selection.remove('inactive')
+    expect(sync).toHaveBeenCalledOnce()
+    expect(rateLimits.refreshForCodexAccountChange).toHaveBeenCalledOnce()
+  })
 })

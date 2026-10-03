@@ -72,12 +72,11 @@ export class CodexAccountSelection {
     )
     const nextActiveId =
       settings.activeCodexManagedAccountId === accountId ? null : nextSelection.host
-    const skipRuntimeSync = canSkipCodexRemovalRuntimeSync(
-      settings,
-      nextAccounts,
-      nextSelection,
-      () => this.dependencies.runtimeHome.getSelectedHostAccountCodexHomePath()
-    )
+    const skipRuntimeSync =
+      account.managedHomeRuntime !== 'wsl' &&
+      canSkipCodexRemovalRuntimeSync(settings, nextAccounts, nextSelection, () =>
+        this.dependencies.runtimeHome.getSelectedHostAccountCodexHomePath()
+      )
 
     this.dependencies.store.updateSettings({
       codexManagedAccounts: nextAccounts,
