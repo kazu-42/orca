@@ -183,7 +183,7 @@ describe('Codex account removal durability', () => {
     expect(existsSync(managedHomePath)).toBe(false)
   })
 
-  it('rolls removal back when runtime reconciliation tries to mutate preview settings', async () => {
+  it('rolls removal back when runtime reconciliation tries to mutate unrelated preview settings', async () => {
     const managedHomePath = createManagedHome(testState.userDataDir, 'account-1')
     const settings = createSettings({
       codexManagedAccounts: [
@@ -203,7 +203,7 @@ describe('Codex account removal durability', () => {
     const store = createStore(settings)
     const runtimeHome = createRuntimeHome()
     runtimeHome.syncForCurrentSelection.mockImplementationOnce(() => {
-      store.updateSettings({ activeCodexManagedAccountId: 'unexpected-account' })
+      store.updateSettings({ uiLanguage: 'ja' })
     })
     const { CodexAccountService } = await import('./service')
     const service = new CodexAccountService(
@@ -278,7 +278,11 @@ describe('Codex account removal durability', () => {
       activeAccountIdsByRuntime: { host: null, wsl: { Ubuntu: null } }
     })
     expect(existsSync(managedHomePath)).toBe(false)
-    expect(runtimeHome.syncForCurrentSelection).toHaveBeenCalledOnce()
+    expect(runtimeHome.syncForCurrentSelection).toHaveBeenCalledWith({ runtime: 'host' })
+    expect(runtimeHome.syncForCurrentSelection).toHaveBeenCalledWith({
+      runtime: 'wsl',
+      wslDistro: 'Ubuntu'
+    })
   })
 
   it('restores the selected account when account removal persistence fails', async () => {

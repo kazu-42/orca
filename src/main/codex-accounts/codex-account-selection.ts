@@ -9,7 +9,9 @@ import type { CodexRuntimeHomeService } from './runtime-home-service'
 import type { CodexConfigMirror } from './codex-config-mirror'
 import type { CodexAccountServiceLifecycle } from './codex-account-service-types'
 import { toCodexManagedAccountSummary } from './codex-account-service-types'
+import { reconcileCodexAccountRemoval } from './codex-account-removal-reconciliation'
 import {
+  getCodexSelectionLaneKey,
   getCodexSelectionTargetForAccount,
   getSelectedCodexAccountIdForTarget,
   normalizeCodexAccountSelectionTarget,
@@ -87,25 +89,43 @@ export class CodexAccountSelection {
       activeCodexManagedAccountId: nextSelection.host,
       activeCodexManagedAccountIdsByRuntime: nextSelection
     }
+    const touchedTargets = new Map<string, CodexAccountSelectionTarget>()
     try {
-      this.dependencies.store.withCodexAccountSettingsPreview(settingsUpdate, () => {
-        this.dependencies.runtimeHome.syncForCurrentSelection(accountTarget)
-      })
+      const reconciledUpdate = this.dependencies.store.withCodexAccountSettingsPreview(
+        settingsUpdate,
+        () =>
+          reconcileCodexAccountRemoval(
+            this.dependencies.store,
+            (target) => {
+              touchedTargets.set(getCodexSelectionLaneKey(target), target)
+              this.dependencies.runtimeHome.syncForCurrentSelection(target)
+            },
+            accountTarget,
+            normalizeCodexRuntimeSelection(settings)
+          )
+      )
       // Retain the target before the destructive commit, so restart can retry lost acknowledgements.
       await this.dependencies.store.retainCodexAccountRemovalRecoveryAndFlush(account)
-      await this.dependencies.persistAccountRemoval(accountId, settingsUpdate)
+      await this.dependencies.persistAccountRemoval(accountId, reconciledUpdate)
     } catch (error) {
-      try {
-        this.dependencies.runtimeHome.syncForCurrentSelection(accountTarget)
-      } catch (rollbackError) {
-        console.error(
-          '[codex-accounts] Failed to restore runtime after account removal rollback:',
-          rollbackError
-        )
+      for (const target of touchedTargets.values()) {
+        try {
+          this.dependencies.runtimeHome.syncForCurrentSelection(target)
+        } catch (rollbackError) {
+          console.error(
+            '[codex-accounts] Failed to restore runtime after account removal rollback:',
+            rollbackError
+          )
+        }
       }
       throw error
     }
-    if (account.managedHomeRuntime === 'host' && nextSelection.host === null) {
+    const committedHost = normalizeCodexRuntimeSelection(this.dependencies.store.getSettings()).host
+    if (
+      committedHost === null &&
+      (account.managedHomeRuntime !== 'wsl' ||
+        normalizeCodexRuntimeSelection(settings).host !== null)
+    ) {
       try {
         this.dependencies.lifecycle.onHostSystemDefaultSelected?.()
       } catch (error) {

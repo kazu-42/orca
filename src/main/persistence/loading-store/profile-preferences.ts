@@ -86,7 +86,18 @@ export class ProfilePreferences {
     options: { notifyListeners?: boolean; originWebContentsId?: number } = {}
   ): GlobalSettings {
     if (this[profilePreferencesContext].runtime.codexAccountSettingsPreviewActive) {
-      throw new Error('Cannot update settings during a Codex account settings preview')
+      if (
+        Object.keys(updates).some(
+          (key) =>
+            key !== 'activeCodexManagedAccountId' && key !== 'activeCodexManagedAccountIdsByRuntime'
+        )
+      ) {
+        throw new Error('Cannot update settings during a Codex account settings preview')
+      }
+      // Self-healing belongs to the removal commit, never a preview save or notification.
+      const runtime = this[profilePreferencesContext].runtime
+      runtime.state.settings = { ...runtime.state.settings, ...updates }
+      return runtime.state.settings
     }
     return updateSettingsOperation(getSettingsMutationOperations(this), updates, options)
   }

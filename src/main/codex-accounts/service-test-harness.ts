@@ -6,7 +6,7 @@ import type { GlobalSettings } from '../../shared/global-settings-types'
 import type { Store } from '../persistence'
 import { createCodexAccountSettings } from './codex-account-settings-fixture'
 import type { CodexResetCreditAttemptLedger } from '../../shared/codex-reset-credit-attempt-ledger'
-import type { CodexRateLimitHomeResolution } from './runtime-home-service'
+import type { CodexRateLimitHomeResolution, CodexRuntimeHomeService } from './runtime-home-service'
 
 export const testState = {
   userDataDir: '',
@@ -56,7 +56,13 @@ export function createStore(settings: GlobalSettings) {
     return settings
   }
   const updateSettings = (updates: Partial<GlobalSettings>) => {
-    if (settingsPreviewActive) {
+    if (
+      settingsPreviewActive &&
+      Object.keys(updates).some(
+        (key) =>
+          key !== 'activeCodexManagedAccountId' && key !== 'activeCodexManagedAccountIdsByRuntime'
+      )
+    ) {
       throw new Error('Cannot update settings during a Codex account settings preview')
     }
     return applySettings(updates)
@@ -150,7 +156,7 @@ export function createRateLimits(): RateLimitsStub {
 
 /** Runtime-home collaborator surface the accounts service calls into. */
 export type RuntimeHomeStub = {
-  syncForCurrentSelection: Mock<(...args: unknown[]) => void>
+  syncForCurrentSelection: Mock<CodexRuntimeHomeService['syncForCurrentSelection']>
   clearLastWrittenAuthJson: Mock<(...args: unknown[]) => void>
   prepareForRateLimitFetch: Mock<(...args: unknown[]) => CodexRateLimitHomeResolution>
 }

@@ -171,7 +171,44 @@ describe('Codex account removal persistence', () => {
     expect(store.getSettings()).toEqual(beforeSettings)
   })
 
-  it('rejects Codex settings mutations during an account settings preview', async () => {
+  it('folds selection self-healing into the preview without publishing or saving it', async () => {
+    const store = createStore()
+    const account = createPersistedCodexAccount()
+    store.updateSettings({ codexManagedAccounts: [account] })
+    await store.updateCodexAccountSettingsAndFlush({
+      codexManagedAccounts: [account],
+      activeCodexManagedAccountId: account.id,
+      activeCodexManagedAccountIdsByRuntime: { host: account.id, wsl: {} }
+    })
+    const beforeSettings = structuredClone(store.getSettings())
+    const changed = vi.fn()
+    store.onSettingsChanged(changed)
+    const repaired = store.withCodexAccountSettingsPreview(beforeSettings, () => {
+      store.updateSettings(
+        {
+          activeCodexManagedAccountId: null,
+          activeCodexManagedAccountIdsByRuntime: { host: null, wsl: {} }
+        },
+        { notifyListeners: true }
+      )
+      return structuredClone(store.getSettings())
+    })
+    expect(repaired.activeCodexManagedAccountId).toBeNull()
+    expect(store.getSettings()).toEqual(beforeSettings)
+    expect(changed).not.toHaveBeenCalled()
+    expect(readDataFile()).toEqual(expect.objectContaining({ settings: beforeSettings }))
+    await store.updateCodexAccountSettingsAndResetLedgerAndFlush(repaired, {
+      version: 1,
+      attempts: []
+    })
+    expect(createStore().getSettings().activeCodexManagedAccountId).toBeNull()
+  })
+
+  it.each([
+    { uiLanguage: 'ja' as const },
+    { codexManagedAccounts: [] },
+    { activeCodexManagedAccountId: null, uiLanguage: 'ja' as const }
+  ])('rejects non-selection preview updates atomically: %j', async (updates) => {
     const store = createStore()
     const beforeSettings = structuredClone(store.getSettings())
 
@@ -183,7 +220,7 @@ describe('Codex account removal persistence', () => {
           activeCodexManagedAccountIdsByRuntime: { host: null, wsl: {} }
         },
         () => {
-          store.updateSettings({ activeCodexManagedAccountId: 'unexpected-account' })
+          store.updateSettings(updates)
         }
       )
     ).toThrow('Cannot update settings during a Codex account settings preview')
