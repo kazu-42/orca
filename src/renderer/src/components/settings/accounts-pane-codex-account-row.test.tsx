@@ -27,7 +27,11 @@ function rowModel(
     accountRuntimeUnavailable: false,
     accountVisibilityOptions: { remoteOwner: false, ownerPlatform: 'darwin' },
     activeCodexAccountId: null,
-    codexAccounts: { accounts: [current], activeAccountId: null },
+    codexAccounts: {
+      accounts: current.removalPending ? [] : [current],
+      ...(current.removalPending ? { pendingRemovals: [current] } : {}),
+      activeAccountId: null
+    },
     codexAction: 'idle',
     codexRateLimits: null,
     codexRateLimitTarget: { runtime: 'host', wslDistro: null },

@@ -50,11 +50,12 @@ export class CodexAccountSelection {
     const recovery = (settings.codexAccountRemovalRecovery ?? [])
       .filter((account) => !accountIds.has(account.id))
       .map((account) => ({ ...toCodexManagedAccountSummary(account), removalPending: true }))
+      .sort((a, b) => b.updatedAt - a.updatedAt)
     return {
-      accounts: [
-        ...settings.codexManagedAccounts.map(toCodexManagedAccountSummary),
-        ...recovery
-      ].sort((a, b) => b.updatedAt - a.updatedAt),
+      accounts: settings.codexManagedAccounts
+        .map(toCodexManagedAccountSummary)
+        .sort((a, b) => b.updatedAt - a.updatedAt),
+      ...(recovery.length > 0 ? { pendingRemovals: recovery } : {}),
       activeAccountId: normalizeCodexRuntimeSelection(settings).host,
       activeAccountIdsByRuntime: normalizeCodexRuntimeSelection(settings),
       systemDefault: this.dependencies.resolveSystemDefault()

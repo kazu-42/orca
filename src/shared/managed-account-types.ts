@@ -58,6 +58,8 @@ export type CodexSystemDefaultIdentity = {
 
 export type CodexRateLimitAccountsState = {
   accounts: CodexManagedAccountSummary[]
+  /** Cleanup-only records; older consumers keep a selectable accounts roster. */
+  pendingRemovals?: CodexManagedAccountSummary[]
   activeAccountId: string | null
   activeAccountIdsByRuntime?: CodexManagedAccountRuntimeSelection
   /** Resolved identity of the host system-default (real ~/.codex) account.

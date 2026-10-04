@@ -64,7 +64,10 @@ export function renderCodexAccountRow(
           accountId: account.id
         })
   const needsReauthentication = Boolean(accountAuthWarning)
-  const accountDetail = getCodexAccountDisplayDetail(account, codexAccounts.accounts)
+  const accountDetail = getCodexAccountDisplayDetail(account, [
+    ...codexAccounts.accounts,
+    ...(codexAccounts.pendingRemovals ?? [])
+  ])
   const isReauthing = codexAction === `reauth:${account.id}`
   const isRemoving = codexAction === `remove:${account.id}`
   const isBusy = codexAction !== 'idle' || accountRuntimeUnavailable

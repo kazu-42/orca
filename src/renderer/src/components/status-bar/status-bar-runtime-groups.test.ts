@@ -88,7 +88,7 @@ describe('status bar runtime switch groups', () => {
     )
   })
 
-  it('collapses WSL default into the single concrete Codex distro', () => {
+  it('collapses WSL default into the single selectable Codex distro, ignoring pending cleanup', () => {
     const state: CodexRateLimitAccountsState = {
       accounts: [
         {
@@ -99,6 +99,18 @@ describe('status bar runtime switch groups', () => {
           providerAccountId: null,
           workspaceLabel: null,
           workspaceAccountId: null,
+          createdAt: 1,
+          updatedAt: 1,
+          lastAuthenticatedAt: 1
+        }
+      ],
+      pendingRemovals: [
+        {
+          id: 'removed-wsl',
+          email: 'removed@example.com',
+          managedHomeRuntime: 'wsl',
+          wslDistro: 'Debian',
+          removalPending: true,
           createdAt: 1,
           updatedAt: 1,
           lastAuthenticatedAt: 1

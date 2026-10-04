@@ -2,6 +2,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { getDefaultSettings } from '../../../../shared/constants'
+import type { watchProviderAccounts } from '@/runtime/runtime-provider-accounts-client'
 import { AccountsPane } from './AccountsPane'
 
 const fake = vi.hoisted(() => ({
@@ -28,7 +29,7 @@ const fake = vi.hoisted(() => ({
   subscribe: vi.fn(() => vi.fn()),
   refresh: vi.fn(async () => {}),
   write: vi.fn(),
-  watcher: vi.fn(() => ({ close: vi.fn() })),
+  watcher: vi.fn<typeof watchProviderAccounts>(() => ({ close: vi.fn() })),
   grokUsage: { updatedAt: 0 }
 }))
 vi.mock('@/i18n/i18n', () => ({
@@ -114,6 +115,41 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   Reflect.deleteProperty(window, 'api')
+})
+
+it('renders separate pending removals as guarded cleanup rows', async () => {
+  fake.watcher.mockImplementationOnce((_settings, handlers) => {
+    handlers.onSnapshot({
+      claude: { accounts: [], activeAccountId: null },
+      codex: {
+        accounts: [],
+        pendingRemovals: [
+          {
+            id: 'pending',
+            email: 'pending@example.test',
+            managedHomeRuntime: 'host',
+            removalPending: true,
+            createdAt: 1,
+            updatedAt: 1,
+            lastAuthenticatedAt: 1
+          }
+        ],
+        activeAccountId: null
+      },
+      rateLimits: null
+    })
+    return { close: vi.fn() }
+  })
+  render(<AccountsPane settings={getDefaultSettings('/synthetic')} updateSettings={fake.write} />)
+  await act(async () => {})
+  expect(screen.getByText('Removal pending')).toBeTruthy()
+  expect(
+    screen.getByRole('button', { name: /pending@example.test/ }).hasAttribute('disabled')
+  ).toBe(true)
+  expect(screen.getByRole('button', { name: 'Re-authenticate' }).hasAttribute('disabled')).toBe(
+    true
+  )
+  expect(screen.getByRole('button', { name: 'Remove' }).hasAttribute('disabled')).toBe(false)
 })
 
 it.each([false, true])(

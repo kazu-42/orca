@@ -70,9 +70,9 @@ describe('Codex account removal durability', () => {
     )
     await expect(service.removeAccount('account-1')).rejects.toThrow('acknowledgement lost')
     expect(existsSync(managedHomePath)).toBe(true)
-    expect(service.listAccounts().accounts).toMatchObject([
-      { id: 'account-1', removalPending: true }
-    ])
+    const snapshot = service.listAccounts()
+    expect(snapshot.accounts).toEqual([])
+    expect(snapshot).toMatchObject({ pendingRemovals: [{ id: 'account-1', removalPending: true }] })
 
     const reloaded = createStore(structuredClone(store.getSettings()))
     const recovered = new CodexAccountService(
