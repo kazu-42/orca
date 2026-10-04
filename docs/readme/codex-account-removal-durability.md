@@ -9,8 +9,8 @@ The removal sequence is:
 1. Reconcile the runtime selection using the proposed account settings without publishing or saving that preview. Reconcile the host, the removed account's runtime, and every runtime whose selection changes. Selection-only self-healing stays inside the preview and becomes part of the removal commit; unrelated settings writes and preview flushes are rejected. Reconcile any additional selections changed by self-healing until the selection stabilizes.
 2. Persist the target in `codexAccountRemovalRecovery`, while leaving the account and reset guards intact. This record contains account metadata and the managed-home location, never credentials.
 3. Commit the account removal and matching reset-guard removal in one durable profile write.
-4. Delete the managed home after that write is acknowledged. Its ownership checks remain mandatory.
-5. Clear the recovery record only after the home is removed or a local ownership check confirms that it is already absent.
+4. Delete the managed home after that write is acknowledged. Keep its ownership marker until all other entries are deleted, so a file lock does not destroy the evidence needed to retry. An empty home left after marker deletion can be removed only at the expected account path, with a nonrecursive directory removal that refuses any newly created files.
+5. Clear the recovery record only after the home is removed or its absence is verified. For a WSL home, an accessible parent directory must prove that the home or an ancestor is missing; an inaccessible share is never evidence of deletion.
 
 A known write failure rolls back the account and ledger changes. An indeterminate result keeps the writer fenced; restarting reloads the committed state instead of guessing whether the write succeeded. If the account was removed from settings, its recovery record remains in the account snapshot with `removalPending: true`, so removal can be retried. It cannot be selected or reauthenticated as a normal account.
 
