@@ -32,6 +32,7 @@ type LabelNode = {
   id: string
   name: string
   color: string
+  isGroup: boolean
 }
 
 type MemberNode = {
@@ -55,7 +56,7 @@ function team(id: string, name = id, key = id.toUpperCase()): TeamNode {
 }
 
 function makeLabel(id: string, name = id): LabelNode {
-  return { id, name, color: '#ff0000' }
+  return { id, name, color: '#ff0000', isGroup: false }
 }
 
 function makeMember(id: string, displayName = id): MemberNode {
@@ -72,15 +73,16 @@ function makeConnection<TNode>(pages: TNode[][]) {
   return {
     nodes,
     pageInfo: { hasNextPage: pages.length > 1 },
-    fetchNext: vi.fn().mockImplementation(async function fetchNext(this: {
-      nodes: TNode[]
-      pageInfo: { hasNextPage: boolean }
-    }) {
-      pageIndex += 1
-      this.nodes.push(...(pages[pageIndex] ?? []))
-      this.pageInfo.hasNextPage = pageIndex < pages.length - 1
-      return this
-    })
+    fetchNext: vi
+      .fn()
+      .mockImplementation(
+        async function fetchNext(this: { nodes: TNode[]; pageInfo: { hasNextPage: boolean } }) {
+          pageIndex += 1
+          this.nodes.push(...(pages[pageIndex] ?? []))
+          this.pageInfo.hasNextPage = pageIndex < pages.length - 1
+          return this
+        }
+      )
   }
 }
 
@@ -223,6 +225,54 @@ describe('Linear teams', () => {
     expect(entry.client.team).toHaveBeenCalledWith('team-1')
     expect(labels).toHaveBeenCalledWith({ first: 100 })
   })
+
+  it.each(['getTeamLabels', 'getTeamLabelsOrThrow'] as const)(
+    '%s excludes groups across pages while preserving standalone and child labels',
+    async (reader) => {
+      const connection = makeConnection([
+        [{ ...makeLabel('group-1', 'Type'), isGroup: true }],
+        [
+          makeLabel('label-1', 'Urgent'),
+          { ...makeLabel('label-2', 'Bug'), parent: { id: 'group-1' } }
+        ],
+        [{ ...makeLabel('group-2', 'Area'), isGroup: true }],
+        [{ ...makeLabel('label-3', 'Backend'), parent: { id: 'group-2' } }]
+      ])
+      const labels = vi.fn().mockResolvedValue(connection)
+      const entry = makeTeamLookupEntry('workspace-1', 'Workspace', { labels })
+      getClients.mockReturnValue([entry])
+      const readers = await import('./teams')
+
+      await expect(readers[reader]('team-1', 'workspace-1')).resolves.toEqual([
+        { id: 'label-1', name: 'Urgent', color: '#ff0000' },
+        { id: 'label-2', name: 'Bug', color: '#ff0000' },
+        { id: 'label-3', name: 'Backend', color: '#ff0000' }
+      ])
+      expect(connection.fetchNext).toHaveBeenCalledTimes(3)
+      expect(getClients).toHaveBeenCalledWith('workspace-1')
+      expect(entry.client.team).toHaveBeenCalledWith('team-1')
+      expect(labels).toHaveBeenCalledWith({ first: 100 })
+    }
+  )
+
+  it.each(['getTeamLabels', 'getTeamLabelsOrThrow'] as const)(
+    '%s returns no assignable labels when every page contains only groups',
+    async (reader) => {
+      const connection = makeConnection([
+        [{ ...makeLabel('group-1'), isGroup: true }],
+        [{ ...makeLabel('group-2'), isGroup: true }]
+      ])
+      getClients.mockReturnValue([
+        makeTeamLookupEntry('workspace-1', 'Workspace', {
+          labels: vi.fn().mockResolvedValue(connection)
+        })
+      ])
+      const readers = await import('./teams')
+
+      await expect(readers[reader]('team-1', 'workspace-1')).resolves.toEqual([])
+      expect(connection.fetchNext).toHaveBeenCalledTimes(1)
+    }
+  )
 
   it('fetches every page of team states', async () => {
     const states = vi
