@@ -186,7 +186,7 @@ describe('the routes this shell will render from the page', () => {
 
 describe('the grants this app implements', () => {
   it('advertises the optional terminal key rail', () => {
-    expect(MOBILE_WEB_SHELL_GRANTS.has(BRIDGE_TERMINAL_KEY_RAIL_GRANT)).toBe(true)
+    expect(MOBILE_WEB_SHELL_GRANTS).toContain(BRIDGE_TERMINAL_KEY_RAIL_GRANT)
   })
 
   /**

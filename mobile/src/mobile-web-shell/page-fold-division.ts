@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { useWindowDimensions, type LayoutChangeEvent, type View } from 'react-native'
+import { useWindowDimensions, type LayoutChangeEvent, type ViewInstance } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getFoldSplit } from '../layout/fold-division'
 import { useReservedRegions } from '../layout/reserved-regions'
@@ -14,11 +14,11 @@ type WindowFrame = { x: number; y: number; width: number; height: number }
  */
 export function usePageFoldDivision(): {
   division: BridgeFoldDivision | null
-  rootRef: RefObject<View | null>
+  rootRef: RefObject<ViewInstance | null>
   onShellLayout: (event: LayoutChangeEvent) => void
 } {
   const { divisions } = useReservedRegions()
-  const rootRef = useRef<View>(null)
+  const rootRef = useRef<ViewInstance>(null)
   const layoutRef = useRef<WindowFrame | null>(null)
   const [frame, setFrame] = useState<WindowFrame | null>(null)
   const measure = useCallback(() => {

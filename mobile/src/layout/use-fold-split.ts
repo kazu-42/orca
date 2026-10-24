@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
+import { Platform } from 'react-native'
 import { useSafeAreaFrame } from 'react-native-safe-area-context'
-import { OrcaReservedRegions } from '../../modules/orca-reserved-regions/src'
 import { getFoldSplit, type FoldSplit } from './fold-division'
 import { useReservedRegions } from './reserved-regions'
 
@@ -15,6 +15,6 @@ const noFoldSplit = (): FoldSplit | null => null
 
 /**
  * The fold splitting the area `SideSafeArea` lays screens out in, in that area's coordinates.
- * Chosen once: a platform without the module never reports a fold, so it measures nothing.
+ * Chosen once: Android keeps its existing layout without measuring iOS reserved regions.
  */
-export const useFoldSplit = OrcaReservedRegions ? useMeasuredFoldSplit : noFoldSplit
+export const useFoldSplit = Platform.OS === 'ios' ? useMeasuredFoldSplit : noFoldSplit

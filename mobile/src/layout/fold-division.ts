@@ -1,4 +1,4 @@
-import type { ReservedRect } from '../../modules/orca-reserved-regions/src'
+import type { ReservedRect } from './reserved-regions-contract'
 
 /** Where a fold splits a frame: the band from `start` to `end` along the axis it divides. */
 export type FoldSplit = {

@@ -1,35 +1,66 @@
-import { useSyncExternalStore } from 'react'
-import { OrcaReservedRegions, type ReservedRegions } from '../../modules/orca-reserved-regions/src'
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
+import {
+  Platform,
+  View,
+  useWindowDimensions,
+  type ViewProps,
+  type ViewInstance
+} from 'react-native'
+import {
+  ReservedRegionsProvider,
+  useReservedRegions as useMeasuredRegions
+} from 'react-native-reserved-regions'
+import { partitionReservedRegions, type ReservedRegions } from './reserved-regions-contract'
 
 const NO_REGIONS: ReservedRegions = { divisions: [], occlusions: [] }
+const Provider = Platform.OS === 'ios' ? ReservedRegionsProvider : View
+const WindowOriginContext = createContext<Readonly<{ x: number; y: number }> | null>(null)
 
-let current = NO_REGIONS
-const listeners = new Set<() => void>()
-let observing = false
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener)
-  // Why: one app-lifetime native subscription; restarting it would report no regions until the
-  // next layout pass.
-  if (!observing && OrcaReservedRegions) {
-    observing = true
-    OrcaReservedRegions.addListener('onChange', (regions) => {
-      current = regions
-      for (const notify of listeners) {
-        notify()
+/** Keeps provider-local regions in the window coordinates used by safe areas and the WebView. */
+export function WindowReservedRegionsProvider({ onLayout, ...props }: ViewProps) {
+  const ref = useRef<ViewInstance>(null)
+  const [origin, setOrigin] = useState<Readonly<{ x: number; y: number }> | null>(null)
+  const { width, height } = useWindowDimensions()
+  const measure = useCallback(() => {
+    ref.current?.measureInWindow((x, y) => {
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        setOrigin((held) => (held?.x === x && held.y === y ? held : { x, y }))
       }
     })
-  }
-  return () => {
-    listeners.delete(listener)
-  }
-}
-
-/** Active fold and camera regions in window points; none off iPhone Duo or before iOS 27.1. */
-export function useReservedRegions(): ReservedRegions {
-  return useSyncExternalStore(
-    subscribe,
-    () => current,
-    () => NO_REGIONS
+  }, [])
+  useEffect(measure, [measure, width, height])
+  const handleLayout = useCallback<NonNullable<ViewProps['onLayout']>>(
+    (event) => {
+      measure()
+      onLayout?.(event)
+    },
+    [measure, onLayout]
+  )
+  return createElement(
+    WindowOriginContext.Provider,
+    { value: origin },
+    createElement(Provider, { ...props, ref, onLayout: handleLayout })
   )
 }
+
+function useIOSReservedRegions(): ReservedRegions {
+  const regions = useMeasuredRegions()
+  const origin = useContext(WindowOriginContext)
+  return useMemo(
+    () => (origin === null ? NO_REGIONS : partitionReservedRegions(regions, origin)),
+    [regions, origin]
+  )
+}
+
+// Platform is fixed for a native binary; Android keeps its existing layout policy.
+export const useReservedRegions =
+  Platform.OS === 'ios' ? useIOSReservedRegions : (): ReservedRegions => NO_REGIONS
