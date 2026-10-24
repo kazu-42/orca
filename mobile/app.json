@@ -7,12 +7,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "orca",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#111111"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.stably.orca.mobile",
@@ -85,6 +79,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
           "backgroundColor": "#111111"
         }
       ],
