@@ -105,7 +105,8 @@ export function screenModuleMocks(dependencies: ScreenDependencies) {
     }),
     'lucide-react-native': () => ({ X: 'Icon' }),
     'react-native-safe-area-context': () => ({
-      useSafeAreaInsets: () => ({ bottom: 8, left: 0, right: 0, top: 44 })
+      useSafeAreaInsets: () => ({ bottom: 8, left: 0, right: 0, top: 44 }),
+      useSafeAreaFrame: () => ({ x: 0, y: 0, width: 390, height: 844 })
     }),
     'expo-router': () => ({
       router: { replace: vi.fn() },

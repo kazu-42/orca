@@ -20,6 +20,7 @@ import {
   useReservedRegions as useMeasuredRegions
 } from 'react-native-reserved-regions'
 import { partitionReservedRegions, type ReservedRegions } from './reserved-regions-contract'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const NO_REGIONS: ReservedRegions = { divisions: [], occlusions: [] }
 const Provider = Platform.OS === 'ios' ? ReservedRegionsProvider : View
@@ -30,6 +31,7 @@ export function WindowReservedRegionsProvider({ onLayout, ...props }: ViewProps)
   const ref = useRef<ViewInstance>(null)
   const [origin, setOrigin] = useState<Readonly<{ x: number; y: number }> | null>(null)
   const { width, height } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
   const measure = useCallback(() => {
     ref.current?.measureInWindow((x, y) => {
       if (Number.isFinite(x) && Number.isFinite(y)) {
@@ -37,7 +39,7 @@ export function WindowReservedRegionsProvider({ onLayout, ...props }: ViewProps)
       }
     })
   }, [])
-  useEffect(measure, [measure, width, height])
+  useEffect(measure, [measure, width, height, insets.left, insets.right, insets.top, insets.bottom])
   const handleLayout = useCallback<NonNullable<ViewProps['onLayout']>>(
     (event) => {
       measure()
